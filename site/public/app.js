@@ -1,4 +1,5 @@
 const STORE_KEY = "appointments-book";
+const VIEW_KEY = "appointments-cal-view";
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -18,6 +19,13 @@ const els = {
   bookSave: document.getElementById("book-save-msg"),
   weekLabel: document.getElementById("week-label"),
   weekStrip: document.getElementById("week-strip"),
+  monthGrid: document.getElementById("month-grid"),
+  monthCells: document.getElementById("month-cells"),
+  viewWeek: document.getElementById("view-week"),
+  viewMonth: document.getElementById("view-month"),
+  jumpToday: document.getElementById("jump-today"),
+  calPrev: document.getElementById("week-prev"),
+  calNext: document.getElementById("week-next"),
   dayHeading: document.getElementById("day-heading"),
   dayNote: document.getElementById("day-note"),
   dayEmpty: document.getElementById("day-empty"),
@@ -48,10 +56,12 @@ const els = {
 
 let book = emptyBook();
 let viewedMonday = mondayOf(new Date());
+let viewedMonth = monthStart(new Date());
 let openDay = iso(new Date());
 let persistOk = true;
 let editingId = null;
 let findQuery = "";
+let calView = readView();
 
 function emptyBook() {
   return {
@@ -75,6 +85,32 @@ function addDays(date, n) {
   const x = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   x.setDate(x.getDate() + n);
   return x;
+}
+
+function monthStart(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date, n) {
+  return new Date(date.getFullYear(), date.getMonth() + n, 1);
+}
+
+function readView() {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    if (v === "month" || v === "week") return v;
+  } catch (err) {
+    /* private mode */
+  }
+  return "week";
+}
+
+function persistView() {
+  try {
+    localStorage.setItem(VIEW_KEY, calView);
+  } catch (err) {
+    /* private mode */
+  }
 }
 
 function iso(date) {
@@ -219,6 +255,10 @@ function formatWeekLabel(monday) {
   return "Week of " + left + " to " + right + ", " + monday.getFullYear();
 }
 
+function formatMonthLabel(first) {
+  return MONTHS[first.getMonth()] + " " + first.getFullYear();
+}
+
 function formatDayLong(date) {
   const names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   return names[date.getDay()] + ", " + MONTHS[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
@@ -267,27 +307,74 @@ function renderCover() {
   els.fieldNote.value = book.note;
 }
 
-function renderWeek() {
+function fillDayTab(btn, date, dateIso, todayIso) {
+  const count = bookedSlots(dateIso).length;
+  if (dateIso === openDay) btn.classList.add("is-open");
+  if (dateIso === todayIso) btn.classList.add("is-today");
+  btn.dataset.day = dateIso;
+  const strong = document.createElement("strong");
+  strong.textContent = calView === "month"
+    ? String(date.getDate())
+    : WEEKDAYS[date.getDay()] + " " + date.getDate();
+  const span = document.createElement("span");
+  span.textContent = count === 0 ? "Open" : (count === 1 ? "1 booked" : count + " booked");
+  btn.append(strong, span);
+}
+
+function renderCal() {
+  const today = new Date();
+  const todayIso = iso(today);
+  const onToday = openDay === todayIso;
+  els.jumpToday.disabled = onToday;
+  els.viewWeek.classList.toggle("is-on", calView === "week");
+  els.viewMonth.classList.toggle("is-on", calView === "month");
+  els.viewWeek.setAttribute("aria-pressed", calView === "week" ? "true" : "false");
+  els.viewMonth.setAttribute("aria-pressed", calView === "month" ? "true" : "false");
+
+  if (calView === "month") {
+    els.weekLabel.textContent = formatMonthLabel(viewedMonth);
+    els.calPrev.textContent = "Previous month";
+    els.calNext.textContent = "Next month";
+    els.weekStrip.hidden = true;
+    els.monthGrid.hidden = false;
+    els.monthCells.replaceChildren();
+    const start = mondayOf(viewedMonth);
+    for (let i = 0; i < 42; i += 1) {
+      const date = addDays(start, i);
+      const dateIso = iso(date);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "day-tab";
+      if (date.getMonth() !== viewedMonth.getMonth()) btn.classList.add("is-other");
+      fillDayTab(btn, date, dateIso, todayIso);
+      els.monthCells.append(btn);
+    }
+    return;
+  }
+
   els.weekLabel.textContent = formatWeekLabel(viewedMonday);
-  const todayIso = iso(new Date());
+  els.calPrev.textContent = "Previous week";
+  els.calNext.textContent = "Next week";
+  els.weekStrip.hidden = false;
+  els.monthGrid.hidden = true;
   els.weekStrip.replaceChildren();
   for (let i = 0; i < 7; i += 1) {
     const date = addDays(viewedMonday, i);
     const dateIso = iso(date);
-    const count = bookedSlots(dateIso).length;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "day-tab";
-    if (dateIso === openDay) btn.classList.add("is-open");
-    if (dateIso === todayIso) btn.classList.add("is-today");
-    btn.dataset.day = dateIso;
-    const strong = document.createElement("strong");
-    strong.textContent = WEEKDAYS[date.getDay()] + " " + date.getDate();
-    const span = document.createElement("span");
-    span.textContent = count === 0 ? "Open" : (count === 1 ? "1 booked" : count + " booked");
-    btn.append(strong, span);
+    fillDayTab(btn, date, dateIso, todayIso);
     els.weekStrip.append(btn);
   }
+}
+
+function showDay(dateIso) {
+  const date = fromIso(dateIso);
+  if (!date) return;
+  openDay = dateIso;
+  viewedMonday = mondayOf(date);
+  viewedMonth = monthStart(date);
 }
 
 function quietButton(label, attr, id) {
@@ -454,7 +541,7 @@ function renderFormMode() {
 
 function render() {
   renderCover();
-  renderWeek();
+  renderCal();
   renderDay();
   renderFind();
   renderRename();
@@ -541,8 +628,7 @@ function startEdit(id) {
   const found = findSlot(id);
   if (!found || found.slot.status === "canceled") return;
   editingId = id;
-  openDay = found.date;
-  viewedMonday = mondayOf(fromIso(found.date));
+  showDay(found.date);
   els.slotTime.value = found.slot.time;
   els.slotName.value = found.slot.name;
   els.slotPhone.value = found.slot.phone;
@@ -567,8 +653,7 @@ function restoreSlot(id) {
   if (!found) return;
   found.slot.status = "booked";
   persist();
-  openDay = found.date;
-  viewedMonday = mondayOf(fromIso(found.date));
+  showDay(found.date);
   render();
 }
 
@@ -612,15 +697,14 @@ async function fetchJson(url) {
 async function loadSample() {
   const raw = await fetchJson("sample.json");
   applyBook(raw, "Sample: Elm Street Cuts, week of September 14, 2026. Fake names.");
-  viewedMonday = mondayOf(fromIso("2026-09-16"));
-  openDay = "2026-09-16";
+  showDay("2026-09-16");
   render();
 }
 
 function startBlank() {
   applyBook(emptyBook(), "Blank book. Pick a day and add a slot.");
-  viewedMonday = mondayOf(new Date());
-  openDay = iso(new Date());
+  showDay(iso(new Date()));
+  findQuery = "";
   findQuery = "";
   els.findQ.value = "";
   render();
@@ -679,8 +763,7 @@ function duplicateWeek() {
     dest.slots = dest.slots.concat(copies);
   }
   persist();
-  viewedMonday = destMonday;
-  openDay = iso(destMonday);
+  showDay(iso(destMonday));
   els.mode.textContent = "Copied this week onto the next week.";
   render();
 }
@@ -720,29 +803,64 @@ function renamePerson(event) {
 }
 
 document.getElementById("week-prev").addEventListener("click", function () {
-  viewedMonday = addDays(viewedMonday, -7);
-  openDay = iso(viewedMonday);
+  if (calView === "month") {
+    viewedMonth = addMonths(viewedMonth, -1);
+    showDay(iso(viewedMonth));
+  } else {
+    showDay(iso(addDays(viewedMonday, -7)));
+  }
   if (editingId) clearSlotForm();
   showToolsErr("");
   render();
 });
 
 document.getElementById("week-next").addEventListener("click", function () {
-  viewedMonday = addDays(viewedMonday, 7);
-  openDay = iso(viewedMonday);
+  if (calView === "month") {
+    viewedMonth = addMonths(viewedMonth, 1);
+    showDay(iso(viewedMonth));
+  } else {
+    showDay(iso(addDays(viewedMonday, 7)));
+  }
   if (editingId) clearSlotForm();
   showToolsErr("");
   render();
 });
 
-els.weekStrip.addEventListener("click", function (event) {
+document.getElementById("jump-today").addEventListener("click", function () {
+  showDay(iso(new Date()));
+  if (editingId) clearSlotForm();
+  showToolsErr("");
+  els.mode.textContent = "This week.";
+  render();
+});
+
+document.getElementById("view-week").addEventListener("click", function () {
+  calView = "week";
+  persistView();
+  viewedMonday = mondayOf(fromIso(openDay) || new Date());
+  if (editingId) clearSlotForm();
+  render();
+});
+
+document.getElementById("view-month").addEventListener("click", function () {
+  calView = "month";
+  persistView();
+  viewedMonth = monthStart(fromIso(openDay) || new Date());
+  if (editingId) clearSlotForm();
+  render();
+});
+
+function onPickDay(event) {
   const btn = event.target.closest("[data-day]");
   if (!btn) return;
-  openDay = btn.dataset.day;
+  showDay(btn.dataset.day);
   if (editingId) clearSlotForm();
   showToolsErr("");
   render();
-});
+}
+
+els.weekStrip.addEventListener("click", onPickDay);
+els.monthCells.addEventListener("click", onPickDay);
 
 els.slotRows.addEventListener("click", function (event) {
   const edit = event.target.closest("[data-edit]");
@@ -767,8 +885,7 @@ els.pileRows.addEventListener("click", function (event) {
 els.findResults.addEventListener("click", function (event) {
   const btn = event.target.closest("[data-open-day]");
   if (!btn) return;
-  openDay = btn.getAttribute("data-open-day");
-  viewedMonday = mondayOf(fromIso(openDay));
+  showDay(btn.getAttribute("data-open-day"));
   render();
 });
 

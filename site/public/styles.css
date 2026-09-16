@@ -278,6 +278,38 @@ button:disabled {
   cursor: default;
 }
 
+.cal-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.55rem;
+}
+
+.view-toggle {
+  display: flex;
+}
+
+.view-toggle button {
+  border-radius: 0;
+}
+
+.view-toggle button + button {
+  border-left: 0;
+}
+
+.view-toggle button:not(.is-on) {
+  background: var(--page);
+  color: var(--ink);
+  border-color: #c3b496;
+}
+
+.view-toggle button.is-on {
+  background: var(--cloth);
+  color: var(--cream);
+  border-color: var(--cloth);
+}
+
 .week-bar {
   display: flex;
   align-items: center;
@@ -297,6 +329,47 @@ button:disabled {
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.35rem;
   margin: 0 0 0.9rem;
+}
+
+.week-strip[hidden],
+.month-grid[hidden] {
+  display: none !important;
+}
+
+.month-grid {
+  margin: 0 0 0.9rem;
+}
+
+.month-dows,
+.month-cells {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.month-dows {
+  margin: 0 0 0.3rem;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.month-dows span {
+  padding: 0 0.35rem;
+}
+
+.month-cells .day-tab {
+  min-height: 4.1rem;
+}
+
+.day-tab.is-other {
+  opacity: 0.5;
+}
+
+.day-tab.is-other.is-open {
+  opacity: 1;
 }
 
 .day-tab {
@@ -469,6 +542,16 @@ button:disabled {
     padding: 0.4rem 0.45rem;
   }
 
+  .month-cells .day-tab {
+    min-height: 3.3rem;
+    padding: 0.3rem 0.28rem 0.35rem;
+  }
+
+  .month-dows span {
+    font-size: 0.62rem;
+    padding: 0 0.12rem;
+  }
+
   .day-panel {
     min-height: 0;
   }
@@ -514,8 +597,10 @@ button:disabled {
   #find-form,
   #rename-form,
   #pile,
+  .cal-tools,
   .week-bar,
-  .week-strip {
+  .week-strip,
+  .month-grid {
     display: none !important;
   }
 

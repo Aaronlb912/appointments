@@ -16,7 +16,7 @@
     </div>
   </header>
   <main>
-    <p class="lead">Open a day. Write a name and a time. Edit or cancel a slot. Search a name. Print the day. The book stays in this browser after a refresh. Nothing on this page sends mail.</p>
+    <p class="lead">Open a day. Write a name and a time. Switch week or month, or jump back to this week. Edit or cancel a slot. Search a name. Print the day. The book stays in this browser after a refresh. Nothing on this page sends mail.</p>
     <p class="note no-print" id="mode-line"></p>
     <p id="tools-err" class="err no-print" hidden></p>
 
@@ -31,12 +31,25 @@
     </div>
 
     <div class="spread">
+      <div class="cal-tools no-print">
+        <div class="view-toggle" role="group" aria-label="Calendar view">
+          <button type="button" id="view-week">Week</button>
+          <button type="button" id="view-month">Month</button>
+        </div>
+        <button type="button" class="secondary" id="jump-today">This week</button>
+      </div>
       <div class="week-bar no-print">
         <button type="button" class="secondary" id="week-prev">Previous week</button>
         <h2 id="week-label">Week</h2>
         <button type="button" class="secondary" id="week-next">Next week</button>
       </div>
       <div id="week-strip" class="week-strip"></div>
+      <div id="month-grid" class="month-grid" hidden>
+        <div class="month-dows" aria-hidden="true">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+        <div id="month-cells" class="month-cells"></div>
+      </div>
 
       <div class="spread-pages">
         <section id="day-panel" class="day-panel" aria-live="polite">

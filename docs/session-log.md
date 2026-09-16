@@ -46,6 +46,16 @@ Landed:
 - Desk paper, cloth cover, ledger table
 - Narrow width: stacked slots, full-width add form
 
+## 2026-09-16 — week jump and month view
+
+Runs: http://127.0.0.1:49141/ (`npm start`)
+
+Landed:
+- This week jumps to today
+- Week / Month toggle
+- Month grid with booked counts
+- Previous / next month in month view
+
 Next session:
 - Screenshots (page, result, miss)
 - Demo video

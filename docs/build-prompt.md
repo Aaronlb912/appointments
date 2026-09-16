@@ -14,8 +14,9 @@ Local URL: http://127.0.0.1:49141/
 Repo: https://github.com/Aaronlb912/appointments
 
 Pages:
-- `/` week strip, open a day, add/edit/cancel slots, search, print,
-  duplicate week, rename, canceled pile, sample and blank, JSON.
+- `/` week or month, This week, open a day, add/edit/cancel slots,
+  search, print, duplicate week, rename, canceled pile, sample and
+  blank, JSON.
 - `/demo/` opens the Elm Street Cuts sample (`?sample=1`).
 
 Auth: none.
@@ -68,8 +69,7 @@ still loads.
 
 ## This session
 
-CSS pass. Week and day first. Add slot beside the day. Find and
-This book below. Narrow width checked.
+This week button. Week / Month toggle. Month grid.
 
 ## Next session
 
