@@ -1,0 +1,9 @@
+{
+  "name": "appointments",
+  "private": true,
+  "description": "Appointment book. Open a day. Write a name and a time.",
+  "type": "module",
+  "scripts": {
+    "start": "node site/server.js"
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "title": "Elm Street Cuts",
+  "subtitle": "Appointment book",
+  "place": "214 Elm Street",
+  "note": "Tue to Sat, 9 to 6. Desk: 555-0148. desk@elmstreetcuts.example",
+  "days": {
+    "2026-09-15": {
+      "note": "",
+      "slots": [
+        {
+          "id": "s-maya-tue",
+          "time": "09:00",
+          "name": "Maya Ortiz",
+          "phone": "555-0102",
+          "note": "Cut and bangs",
+          "status": "booked"
+        },
+        {
+          "id": "s-ben-tue",
+          "time": "10:30",
+          "name": "Ben Walsh",
+          "phone": "555-0133",
+          "note": "Color, foils",
+          "status": "booked"
+        },
+        {
+          "id": "s-kim-tue",
+          "time": "13:00",
+          "name": "Kim Alvarez",
+          "phone": "555-0164",
+          "note": "Kids cut",
+          "status": "booked"
+        }
+      ]
+    },
+    "2026-09-16": {
+      "note": "",
+      "slots": [
+        {
+          "id": "s-priya-wed",
+          "time": "09:00",
+          "name": "Priya Shah",
+          "phone": "555-0177",
+          "note": "Trim",
+          "status": "booked"
+        },
+        {
+          "id": "s-luis-wed",
+          "time": "11:15",
+          "name": "Luis Ortega",
+          "phone": "555-0119",
+          "note": "Fade",
+          "status": "booked"
+        },
+        {
+          "id": "s-dana-wed",
+          "time": "14:00",
+          "name": "Dana Chen",
+          "phone": "555-0188",
+          "note": "Blowout",
+          "status": "booked"
+        }
+      ]
+    },
+    "2026-09-17": {
+      "note": "",
+      "slots": [
+        {
+          "id": "s-rae-thu",
+          "time": "10:00",
+          "name": "Rae Patel",
+          "phone": "555-0126",
+          "note": "Cut",
+          "status": "booked"
+        }
+      ]
+    },
+    "2026-09-18": {
+      "note": "",
+      "slots": [
+        {
+          "id": "s-jordan-fri",
+          "time": "09:30",
+          "name": "Jordan Blake",
+          "phone": "555-0141",
+          "note": "Beard and cut",
+          "status": "booked"
+        },
+        {
+          "id": "s-sam-fri",
+          "time": "16:00",
+          "name": "Sam Okonkwo",
+          "phone": "555-0155",
+          "note": "Color",
+          "status": "booked"
+        }
+      ]
+    },
+    "2026-09-19": {
+      "note": "Wedding trial at 9. Do not move it.",
+      "slots": [
+        {
+          "id": "s-elena-sat",
+          "time": "09:00",
+          "name": "Elena Ruiz",
+          "phone": "555-0190",
+          "note": "Wedding trial",
+          "status": "booked"
+        },
+        {
+          "id": "s-chris-sat",
+          "time": "11:00",
+          "name": "Chris Nguyen",
+          "phone": "555-0122",
+          "note": "Cut",
+          "status": "booked"
+        }
+      ]
+    }
+  }
+}

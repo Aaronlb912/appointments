@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Appointment book</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#slot-name">Skip to add a slot</a>
+  <header class="cover">
+    <div class="cover-inner">
+      <p id="book-place">Appointment book</p>
+      <h1 id="book-title">Appointment book</h1>
+      <p id="book-sub" class="subtitle"></p>
+    </div>
+  </header>
+  <main>
+    <p class="lead">Open a day. Write a name and a time. The book stays in this browser after a refresh. Download JSON if you want a file. Nothing on this page sends mail.</p>
+    <p class="note no-print" id="mode-line"></p>
+
+    <div class="toolbar no-print">
+      <button type="button" id="btn-sample">Load sample</button>
+      <button type="button" class="secondary" id="btn-blank">Start blank</button>
+      <button type="button" class="secondary" id="btn-download">Download JSON</button>
+      <button type="button" class="secondary" id="btn-load">Load JSON</button>
+      <input id="file-json" type="file" accept="application/json,.json" hidden>
+    </div>
+
+    <form id="book-form" class="pad no-print" action="#">
+      <h2>This book</h2>
+      <div class="row3">
+        <p>
+          <label for="field-title">Title</label>
+          <input id="field-title" type="text" autocomplete="off" placeholder="Appointment book">
+        </p>
+        <p>
+          <label for="field-subtitle">Shop or desk</label>
+          <input id="field-subtitle" type="text" autocomplete="off" placeholder="Elm Street Cuts">
+        </p>
+        <p>
+          <label for="field-place">Place</label>
+          <input id="field-place" type="text" autocomplete="off" placeholder="214 Elm Street">
+        </p>
+      </div>
+      <p>
+        <label for="field-note">Note</label>
+        <input id="field-note" type="text" autocomplete="off" placeholder="Hours, phone, who sits the desk">
+      </p>
+      <p id="book-save-msg" class="status" hidden>Saved in this browser.</p>
+    </form>
+
+    <div class="week-bar">
+      <button type="button" class="secondary" id="week-prev">Previous week</button>
+      <h2 id="week-label">Week</h2>
+      <button type="button" class="secondary" id="week-next">Next week</button>
+    </div>
+    <div id="week-strip" class="week-strip"></div>
+
+    <section id="day-panel" class="day-panel" aria-live="polite">
+      <h2 id="day-heading">Pick a day</h2>
+      <p id="day-note" class="day-note" hidden></p>
+      <p id="day-empty" class="empty" hidden></p>
+      <table class="slots" id="slots-table" hidden>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>For</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="slot-rows"></tbody>
+      </table>
+    </section>
+
+    <form id="slot-form" class="pad no-print" action="#">
+      <h2 id="slot-form-title">Add a slot</h2>
+      <p id="slot-err" class="err" hidden></p>
+      <div class="row3">
+        <p>
+          <label for="slot-time">Time</label>
+          <input id="slot-time" type="time">
+        </p>
+        <p>
+          <label for="slot-name">Name</label>
+          <input id="slot-name" type="text" autocomplete="name" placeholder="Maya Ortiz">
+        </p>
+        <p>
+          <label for="slot-phone">Phone</label>
+          <input id="slot-phone" type="text" autocomplete="tel" placeholder="555-0102">
+        </p>
+      </div>
+      <p>
+        <label for="slot-note">For</label>
+        <input id="slot-note" type="text" autocomplete="off" placeholder="Cut, color, trim">
+      </p>
+      <div class="actions">
+        <button type="submit" id="slot-save">Add slot</button>
+        <button type="button" class="secondary" id="slot-clear">Clear</button>
+      </div>
+    </form>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
