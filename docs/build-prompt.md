@@ -14,9 +14,10 @@ Local URL: http://127.0.0.1:49141/
 Repo: https://github.com/Aaronlb912/appointments
 
 Pages:
-- `/` week or month, This week, open a day, add/edit/cancel slots,
-  search, print, duplicate week, rename, canceled pile, sample and
-  blank, JSON.
+- `/` week or month, This week, who is next, open a day, add/edit/
+  here/no-show/cancel slots, day note, search, print day or week,
+  copy day, duplicate week, rename, canceled pile, sample and blank,
+  JSON.
 - `/demo/` opens the Elm Street Cuts sample (`?sample=1`).
 
 Auth: none.
@@ -49,27 +50,31 @@ Blank book in `site/public/book.json`.
 5. No account? Yes. Static files. No signup.
 6. Coworker test? Yes. Zip `site/public/`. They open `index.html` on
    any static server.
-7. Keep a copy? Yes. Download JSON. Print this day.
+7. Keep a copy? Yes. Download JSON. Print this day. Print this week.
+   Copy this day.
 8. Miss and recover? Yes. Blank time. Blank name. Blank rename.
-   Duplicate onto a week that already has names. Bad JSON. Empty
-   day. Empty search. Empty canceled pile. Then a filled slot or a
-   good file.
+   Same time twice. Duplicate onto a week that already has names.
+   Put back onto a taken time. Bad JSON. Empty day. Empty search.
+   Empty canceled pile. Then a filled slot or a good file.
 9. README says how? Who, run, URL. Drop-in steps and Demo stills
    wait for the ship session.
 
 ## Go deep (done-means)
 
 A person can finish the book on the page: add, open, edit, cancel,
-and remove their own slots. Real fields (time, name, phone, for).
+mark here or no-show, and remove their own slots. Real fields (time,
+name, phone, for). Same time twice misses. Name fill from people
+already in the book. Day note. Time chips 9 to 6. Tap a phone.
 Sample and blank. Persist and download. Find a name later. Print
-the day. Duplicate a week. Rename a person. Hit a miss and get
-back. Change title and CSS. Take the folder. Escape cancels an
-editor. Empty days say what to do. Quiet Edit/Cancel. Old JSON
-still loads.
+the day or the week. Copy a day. Duplicate a week. Rename a person.
+Hit a miss and get back. Change title and CSS. Take the folder.
+Escape cancels an editor. Empty days say what to do. Quiet row
+actions. Old JSON still loads.
 
 ## This session
 
-This week button. Week / Month toggle. Month grid.
+Desk pass: who is next, same-time miss, name fill, day note, time
+chips, tap-to-call, print week, copy day, here / no-show.
 
 ## Next session
 

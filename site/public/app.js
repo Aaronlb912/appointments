@@ -26,16 +26,21 @@ const els = {
   jumpToday: document.getElementById("jump-today"),
   calPrev: document.getElementById("week-prev"),
   calNext: document.getElementById("week-next"),
+  nextUp: document.getElementById("next-up"),
   dayHeading: document.getElementById("day-heading"),
   dayNote: document.getElementById("day-note"),
+  dayNoteField: document.getElementById("day-note-field"),
   dayEmpty: document.getElementById("day-empty"),
   slotsTable: document.getElementById("slots-table"),
   slotRows: document.getElementById("slot-rows"),
   slotErr: document.getElementById("slot-err"),
   slotTime: document.getElementById("slot-time"),
+  timeChips: document.getElementById("time-chips"),
   slotName: document.getElementById("slot-name"),
+  nameSuggest: document.getElementById("name-suggest"),
   slotPhone: document.getElementById("slot-phone"),
   slotNote: document.getElementById("slot-note"),
+  weekPrint: document.getElementById("week-print"),
   slotFormTitle: document.getElementById("slot-form-title"),
   slotSave: document.getElementById("slot-save"),
   slotClear: document.getElementById("slot-clear"),
@@ -62,6 +67,16 @@ let persistOk = true;
 let editingId = null;
 let findQuery = "";
 let calView = readView();
+
+const TIME_CHIPS = (function () {
+  const list = [];
+  for (let mins = 9 * 60; mins <= 18 * 60; mins += 30) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    list.push(String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0"));
+  }
+  return list;
+}());
 
 function emptyBook() {
   return {
@@ -141,7 +156,9 @@ function normalizeSlot(slot, index) {
     name: name,
     phone: String(slot.phone || "").trim(),
     note: String(slot.note || slot.for || "").trim(),
-    status: slot.status === "canceled" ? "canceled" : "booked",
+    status: slot.status === "canceled" || slot.status === "noshow" || slot.status === "here"
+      ? slot.status
+      : "booked",
   };
 }
 
@@ -185,12 +202,32 @@ function dayRecord(dateIso) {
   return book.days[dateIso] || { note: "", slots: [] };
 }
 
-function bookedSlots(dateIso) {
-  return dayRecord(dateIso).slots.filter(function (slot) {
-    return slot.status !== "canceled";
-  }).slice().sort(function (a, b) {
-    return a.time.localeCompare(b.time) || a.name.localeCompare(b.name);
+function sortSlots(list) {
+  return list.slice().sort(function (a, b) {
+    return String(a.time).localeCompare(String(b.time)) || a.name.localeCompare(b.name);
   });
+}
+
+function occupySlots(dateIso) {
+  return sortSlots(dayRecord(dateIso).slots.filter(function (slot) {
+    return slot.status === "booked" || slot.status === "here";
+  }));
+}
+
+function waitingSlots(dateIso) {
+  return sortSlots(dayRecord(dateIso).slots.filter(function (slot) {
+    return slot.status === "booked";
+  }));
+}
+
+function dayListSlots(dateIso) {
+  return sortSlots(dayRecord(dateIso).slots.filter(function (slot) {
+    return slot.status !== "canceled";
+  }));
+}
+
+function bookedSlots(dateIso) {
+  return occupySlots(dateIso);
 }
 
 function canceledSlots() {
@@ -218,21 +255,52 @@ function findSlot(id) {
   return null;
 }
 
-function namesInBook() {
-  const seen = {};
-  const names = [];
-  Object.keys(book.days).forEach(function (dateIso) {
+function peopleIndex() {
+  const map = {};
+  Object.keys(book.days).sort().forEach(function (dateIso) {
     book.days[dateIso].slots.forEach(function (slot) {
       const name = slot.name.trim();
-      if (!name || seen[name]) return;
-      seen[name] = true;
-      names.push(name);
+      if (!name) return;
+      map[name] = { name: name, phone: slot.phone, note: slot.note };
     });
   });
-  names.sort(function (a, b) {
+  return map;
+}
+
+function namesInBook() {
+  return Object.keys(peopleIndex()).sort(function (a, b) {
     return a.localeCompare(b);
   });
-  return names;
+}
+
+function normTime(value) {
+  const parts = String(value || "").trim().split(":");
+  const h = Number(parts[0]);
+  const m = Number(parts[1] || 0);
+  if (Number.isNaN(h) || h < 0 || h > 23 || Number.isNaN(m) || m < 0 || m > 59) return "";
+  return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0");
+}
+
+function timeTaken(dateIso, time, exceptId) {
+  const want = normTime(time);
+  if (!want) return "";
+  const hit = occupySlots(dateIso).find(function (slot) {
+    return slot.id !== exceptId && normTime(slot.time) === want;
+  });
+  return hit ? hit.name : "";
+}
+
+function telHref(phone) {
+  const raw = String(phone || "").trim();
+  if (raw.replace(/\D/g, "").length < 7) return "";
+  return "tel:" + raw.replace(/[^\d+]/g, "");
+}
+
+function statusLabel(status) {
+  if (status === "canceled") return "canceled";
+  if (status === "noshow") return "no-show";
+  if (status === "here") return "here";
+  return "";
 }
 
 function formatTime(hhmm) {
@@ -308,16 +376,22 @@ function renderCover() {
 }
 
 function fillDayTab(btn, date, dateIso, todayIso) {
-  const count = bookedSlots(dateIso).length;
+  const rec = dayRecord(dateIso);
+  const count = occupySlots(dateIso).length;
   if (dateIso === openDay) btn.classList.add("is-open");
   if (dateIso === todayIso) btn.classList.add("is-today");
   btn.dataset.day = dateIso;
+  if (rec.note) btn.title = rec.note;
   const strong = document.createElement("strong");
   strong.textContent = calView === "month"
     ? String(date.getDate())
     : WEEKDAYS[date.getDay()] + " " + date.getDate();
   const span = document.createElement("span");
-  span.textContent = count === 0 ? "Open" : (count === 1 ? "1 booked" : count + " booked");
+  if (count === 0) {
+    span.textContent = rec.note ? rec.note : "Open";
+  } else {
+    span.textContent = count === 1 ? "1 booked" : count + " booked";
+  }
   btn.append(strong, span);
 }
 
@@ -369,6 +443,119 @@ function renderCal() {
   }
 }
 
+function renderNextUp() {
+  const todayIso = iso(new Date());
+  const waiting = waitingSlots(todayIso);
+  if (waiting.length === 0) {
+    const held = occupySlots(todayIso).length;
+    const listed = dayListSlots(todayIso).length;
+    if (listed === 0 && !dayRecord(todayIso).note) {
+      els.nextUp.hidden = true;
+      els.nextUp.textContent = "";
+      return;
+    }
+    els.nextUp.hidden = false;
+    els.nextUp.textContent = held
+      ? "Nobody waiting today. " + held + (held === 1 ? " already here." : " already here.")
+      : "Nobody waiting today.";
+    return;
+  }
+  const next = waiting[0];
+  const left = waiting.length;
+  els.nextUp.hidden = false;
+  els.nextUp.textContent = "Next today: " + next.name + " at " + formatTime(next.time) + ". "
+    + left + (left === 1 ? " left." : " left.");
+}
+
+function renderTimeChips() {
+  const taken = {};
+  occupySlots(openDay).forEach(function (slot) {
+    if (slot.id === editingId) return;
+    taken[normTime(slot.time)] = true;
+  });
+  const current = normTime(els.slotTime.value);
+  els.timeChips.replaceChildren();
+  TIME_CHIPS.forEach(function (hhmm) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = formatTime(hhmm);
+    btn.dataset.chip = hhmm;
+    if (hhmm === current) btn.classList.add("is-on");
+    if (taken[hhmm]) btn.classList.add("is-taken");
+    btn.disabled = !!taken[hhmm] && hhmm !== current;
+    els.timeChips.append(btn);
+  });
+}
+
+function hideNameSuggest() {
+  els.nameSuggest.hidden = true;
+  els.nameSuggest.replaceChildren();
+}
+
+function renderNameSuggest() {
+  const q = els.slotName.value.trim().toLowerCase();
+  if (q.length < 3) {
+    hideNameSuggest();
+    return;
+  }
+  const people = peopleIndex();
+  const hits = Object.keys(people).filter(function (name) {
+    return name.toLowerCase().indexOf(q) !== -1;
+  }).sort(function (a, b) {
+    return a.localeCompare(b);
+  }).slice(0, 8);
+  if (hits.length === 0) {
+    hideNameSuggest();
+    return;
+  }
+  els.nameSuggest.replaceChildren();
+  hits.forEach(function (name) {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.pickName = name;
+    const person = people[name];
+    btn.textContent = person.phone ? name + " · " + person.phone : name;
+    li.append(btn);
+    els.nameSuggest.append(li);
+  });
+  els.nameSuggest.hidden = false;
+}
+
+function pickKnownName(name) {
+  const person = peopleIndex()[name];
+  if (!person) return;
+  els.slotName.value = person.name;
+  els.slotPhone.value = person.phone;
+  if (!els.slotNote.value && person.note) els.slotNote.value = person.note;
+  hideNameSuggest();
+  els.slotPhone.focus();
+}
+
+function dayText(dateIso) {
+  const date = fromIso(dateIso);
+  if (!date) return "";
+  const rec = dayRecord(dateIso);
+  const lines = [formatDayLong(date)];
+  if (rec.note) lines.push(rec.note);
+  const slots = dayListSlots(dateIso);
+  if (slots.length === 0) {
+    lines.push("Nothing booked.");
+  } else {
+    slots.forEach(function (slot) {
+      const mark = statusLabel(slot.status);
+      lines.push(
+        formatTime(slot.time)
+        + "  " + slot.name
+        + (slot.phone ? "  " + slot.phone : "")
+        + (slot.note ? "  " + slot.note : "")
+        + (mark ? "  (" + mark + ")" : "")
+      );
+    });
+  }
+  return lines.join("\n");
+}
+
 function showDay(dateIso) {
   const date = fromIso(dateIso);
   if (!date) return;
@@ -391,6 +578,8 @@ function renderDay() {
   if (!date) {
     els.dayHeading.textContent = "Pick a day";
     els.dayNote.hidden = true;
+    els.dayNoteField.value = "";
+    els.dayNoteField.disabled = true;
     els.dayEmpty.hidden = false;
     els.dayEmpty.textContent = "Pick a day on the week strip.";
     els.slotsTable.hidden = true;
@@ -399,13 +588,17 @@ function renderDay() {
   }
   els.dayHeading.textContent = formatDayLong(date);
   const rec = dayRecord(openDay);
+  if (document.activeElement !== els.dayNoteField) {
+    els.dayNoteField.value = rec.note;
+  }
+  els.dayNoteField.disabled = false;
   if (rec.note) {
     els.dayNote.hidden = false;
     els.dayNote.textContent = rec.note;
   } else {
     els.dayNote.hidden = true;
   }
-  const slots = bookedSlots(openDay);
+  const slots = dayListSlots(openDay);
   els.slotRows.replaceChildren();
   if (slots.length === 0) {
     els.slotsTable.hidden = true;
@@ -417,19 +610,42 @@ function renderDay() {
   els.slotsTable.hidden = false;
   slots.forEach(function (slot) {
     const tr = document.createElement("tr");
-    if (nameHit(slot)) tr.className = "is-hit";
+    const classes = [];
+    if (nameHit(slot)) classes.push("is-hit");
+    if (slot.status === "here") classes.push("is-here");
+    if (slot.status === "noshow") classes.push("is-noshow");
+    tr.className = classes.join(" ");
     const time = document.createElement("td");
     time.className = "time";
     time.textContent = formatTime(slot.time);
     const name = document.createElement("td");
-    name.textContent = slot.name;
+    name.append(document.createTextNode(slot.name));
+    const mark = statusLabel(slot.status);
+    if (mark) {
+      const tag = document.createElement("span");
+      tag.className = "slot-mark";
+      tag.textContent = mark;
+      name.append(tag);
+    }
     const phone = document.createElement("td");
-    phone.textContent = slot.phone;
+    const call = telHref(slot.phone);
+    if (call) {
+      const a = document.createElement("a");
+      a.className = "tel";
+      a.href = call;
+      a.textContent = slot.phone;
+      phone.append(a);
+    } else {
+      phone.textContent = slot.phone;
+    }
     const note = document.createElement("td");
     note.textContent = slot.note;
     const act = document.createElement("td");
     act.className = "row-actions no-print";
-    act.append(quietButton("Edit", "data-edit", slot.id), quietButton("Cancel", "data-cancel", slot.id));
+    act.append(quietButton("Edit", "data-edit", slot.id));
+    if (slot.status !== "here") act.append(quietButton("Here", "data-here", slot.id));
+    if (slot.status !== "noshow") act.append(quietButton("No-show", "data-noshow", slot.id));
+    act.append(quietButton("Cancel", "data-cancel", slot.id));
     tr.append(time, name, phone, note, act);
     els.slotRows.append(tr);
   });
@@ -457,9 +673,10 @@ function renderFind() {
   hits.forEach(function (hit) {
     const li = document.createElement("li");
     const day = fromIso(hit.date);
-    const canceled = hit.slot.status === "canceled" ? " (canceled)" : "";
+    const canceled = statusLabel(hit.slot.status);
     li.append(document.createTextNode(
-      hit.slot.name + " - " + formatDayLong(day) + " " + formatTime(hit.slot.time) + canceled
+      hit.slot.name + " - " + formatDayLong(day) + " " + formatTime(hit.slot.time)
+      + (canceled ? " (" + canceled + ")" : "")
     ));
     const open = document.createElement("button");
     open.type = "button";
@@ -542,11 +759,30 @@ function renderFormMode() {
 function render() {
   renderCover();
   renderCal();
+  renderNextUp();
   renderDay();
+  renderTimeChips();
   renderFind();
   renderRename();
   renderPile();
   renderFormMode();
+}
+
+function saveDayNote() {
+  if (!fromIso(openDay)) return;
+  const note = els.dayNoteField.value;
+  const day = ensureDay(openDay);
+  day.note = note;
+  pruneDay(openDay);
+  persist();
+  if (note) {
+    els.dayNote.hidden = false;
+    els.dayNote.textContent = note;
+  } else {
+    els.dayNote.hidden = true;
+  }
+  renderCal();
+  renderNextUp();
 }
 
 function saveBookFields() {
@@ -565,6 +801,7 @@ function clearSlotForm() {
   els.slotName.value = "";
   els.slotPhone.value = "";
   els.slotNote.value = "";
+  hideNameSuggest();
   showErr("");
   renderFormMode();
 }
@@ -584,7 +821,11 @@ function pruneDay(dateIso) {
 
 function saveSlot(event) {
   event.preventDefault();
-  const time = els.slotTime.value.trim();
+  if (!fromIso(openDay)) {
+    showErr("Pick a day first.");
+    return;
+  }
+  const time = normTime(els.slotTime.value);
   const name = els.slotName.value.trim();
   if (!time) {
     showErr("Put a time on the slot.");
@@ -594,6 +835,12 @@ function saveSlot(event) {
   if (!name) {
     showErr("Put a name on the slot.");
     els.slotName.focus();
+    return;
+  }
+  const taken = timeTaken(openDay, time, editingId);
+  if (taken) {
+    showErr(formatTime(time) + " already has " + taken + ".");
+    els.slotTime.focus();
     return;
   }
   if (editingId) {
@@ -639,21 +886,39 @@ function startEdit(id) {
   els.slotName.focus();
 }
 
-function cancelSlot(id) {
+function setSlotStatus(id, status) {
   const found = findSlot(id);
-  if (!found) return;
-  found.slot.status = "canceled";
+  if (!found || found.slot.status === "canceled") return;
+  if (status === "booked" || status === "here") {
+    const taken = timeTaken(found.date, found.slot.time, found.slot.id);
+    if (taken) {
+      showToolsErr(formatTime(found.slot.time) + " already has " + taken + ".");
+      return;
+    }
+  }
+  found.slot.status = status;
   persist();
   if (editingId === id) clearSlotForm();
+  showToolsErr("");
   render();
+}
+
+function cancelSlot(id) {
+  setSlotStatus(id, "canceled");
 }
 
 function restoreSlot(id) {
   const found = findSlot(id);
   if (!found) return;
+  const taken = timeTaken(found.date, found.slot.time, found.slot.id);
+  if (taken) {
+    showToolsErr("Cannot put that back. " + formatTime(found.slot.time) + " already has " + taken + ".");
+    return;
+  }
   found.slot.status = "booked";
   persist();
   showDay(found.date);
+  showToolsErr("");
   render();
 }
 
@@ -768,6 +1033,96 @@ function duplicateWeek() {
   render();
 }
 
+function fillWeekPrint() {
+  els.weekPrint.replaceChildren();
+  const heading = document.createElement("h2");
+  heading.textContent = formatWeekLabel(viewedMonday);
+  els.weekPrint.append(heading);
+  for (let i = 0; i < 7; i += 1) {
+    const date = addDays(viewedMonday, i);
+    const dateIso = iso(date);
+    const rec = dayRecord(dateIso);
+    const block = document.createElement("div");
+    block.className = "day-block";
+    const h = document.createElement("h3");
+    h.textContent = formatDayLong(date);
+    block.append(h);
+    if (rec.note) {
+      const note = document.createElement("p");
+      note.className = "day-note";
+      note.textContent = rec.note;
+      block.append(note);
+    }
+    const slots = dayListSlots(dateIso);
+    if (slots.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "Nothing booked.";
+      block.append(empty);
+    } else {
+      slots.forEach(function (slot) {
+        const p = document.createElement("p");
+        const mark = statusLabel(slot.status);
+        p.textContent = formatTime(slot.time)
+          + "  " + slot.name
+          + (slot.phone ? "  " + slot.phone : "")
+          + (slot.note ? "  " + slot.note : "")
+          + (mark ? "  (" + mark + ")" : "");
+        block.append(p);
+      });
+    }
+    els.weekPrint.append(block);
+  }
+}
+
+function printWeek() {
+  showToolsErr("");
+  fillWeekPrint();
+  els.weekPrint.hidden = false;
+  els.weekPrint.removeAttribute("aria-hidden");
+  document.body.classList.add("print-week");
+  window.print();
+}
+
+function fallbackCopy(text, done) {
+  const area = document.createElement("textarea");
+  area.value = text;
+  area.setAttribute("readonly", "");
+  area.style.position = "fixed";
+  area.style.left = "-9999px";
+  document.body.append(area);
+  area.select();
+  try {
+    document.execCommand("copy");
+    done();
+  } catch (err) {
+    showToolsErr("Could not copy. Select the day and copy it yourself.");
+  }
+  area.remove();
+}
+
+function copyText(text, okMsg) {
+  const done = function () {
+    els.mode.textContent = okMsg;
+    showToolsErr("");
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(function () {
+      fallbackCopy(text, done);
+    });
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+
+function copyOpenDay() {
+  if (!fromIso(openDay)) {
+    showToolsErr("Pick a day first.");
+    return;
+  }
+  copyText(dayText(openDay), "Copied " + formatDayLong(fromIso(openDay)) + ".");
+}
+
 function renamePerson(event) {
   event.preventDefault();
   showRenameErr("");
@@ -811,6 +1166,7 @@ document.getElementById("week-prev").addEventListener("click", function () {
   }
   if (editingId) clearSlotForm();
   showToolsErr("");
+  showErr("");
   render();
 });
 
@@ -823,6 +1179,7 @@ document.getElementById("week-next").addEventListener("click", function () {
   }
   if (editingId) clearSlotForm();
   showToolsErr("");
+  showErr("");
   render();
 });
 
@@ -830,6 +1187,7 @@ document.getElementById("jump-today").addEventListener("click", function () {
   showDay(iso(new Date()));
   if (editingId) clearSlotForm();
   showToolsErr("");
+  showErr("");
   els.mode.textContent = "This week.";
   render();
 });
@@ -856,6 +1214,7 @@ function onPickDay(event) {
   showDay(btn.dataset.day);
   if (editingId) clearSlotForm();
   showToolsErr("");
+  showErr("");
   render();
 }
 
@@ -866,6 +1225,16 @@ els.slotRows.addEventListener("click", function (event) {
   const edit = event.target.closest("[data-edit]");
   if (edit) {
     startEdit(edit.getAttribute("data-edit"));
+    return;
+  }
+  const here = event.target.closest("[data-here]");
+  if (here) {
+    setSlotStatus(here.getAttribute("data-here"), "here");
+    return;
+  }
+  const noshow = event.target.closest("[data-noshow]");
+  if (noshow) {
+    setSlotStatus(noshow.getAttribute("data-noshow"), "noshow");
     return;
   }
   const cancel = event.target.closest("[data-cancel]");
@@ -907,12 +1276,39 @@ document.getElementById("find-form").addEventListener("submit", function (event)
 document.getElementById("slot-form").addEventListener("submit", saveSlot);
 document.getElementById("slot-clear").addEventListener("click", function () {
   clearSlotForm();
+  renderTimeChips();
   els.slotTime.focus();
 });
 document.getElementById("slot-cancel-edit").addEventListener("click", function () {
   clearSlotForm();
+  renderTimeChips();
   els.slotTime.focus();
 });
+els.slotTime.addEventListener("input", renderTimeChips);
+els.timeChips.addEventListener("click", function (event) {
+  const btn = event.target.closest("[data-chip]");
+  if (!btn || btn.disabled) return;
+  els.slotTime.value = btn.getAttribute("data-chip");
+  showErr("");
+  renderTimeChips();
+});
+els.slotName.addEventListener("input", function () {
+  renderNameSuggest();
+  const exact = peopleIndex()[els.slotName.value.trim()];
+  if (exact && !els.slotPhone.value) els.slotPhone.value = exact.phone;
+});
+els.slotName.addEventListener("blur", function () {
+  window.setTimeout(hideNameSuggest, 180);
+});
+els.nameSuggest.addEventListener("mousedown", function (event) {
+  event.preventDefault();
+});
+els.nameSuggest.addEventListener("click", function (event) {
+  const btn = event.target.closest("[data-pick-name]");
+  if (!btn) return;
+  pickKnownName(btn.getAttribute("data-pick-name"));
+});
+els.dayNoteField.addEventListener("input", saveDayNote);
 
 document.getElementById("book-form").addEventListener("input", saveBookFields);
 document.getElementById("rename-form").addEventListener("submit", renamePerson);
@@ -932,13 +1328,25 @@ els.fileJson.addEventListener("change", function () {
   if (file) loadJsonFile(file);
 });
 document.getElementById("btn-print").addEventListener("click", function () {
+  document.body.classList.remove("print-week");
   window.print();
 });
+document.getElementById("btn-print-week").addEventListener("click", printWeek);
+document.getElementById("btn-copy-day").addEventListener("click", copyOpenDay);
 document.getElementById("btn-dup").addEventListener("click", duplicateWeek);
+
+window.addEventListener("afterprint", function () {
+  document.body.classList.remove("print-week");
+  els.weekPrint.hidden = true;
+  els.weekPrint.setAttribute("aria-hidden", "true");
+  els.weekPrint.replaceChildren();
+});
 
 document.addEventListener("keydown", function (event) {
   if (event.key !== "Escape") return;
   clearSlotForm();
+  hideNameSuggest();
+  renderTimeChips();
 });
 
 async function boot() {

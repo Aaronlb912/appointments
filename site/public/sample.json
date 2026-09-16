@@ -5,6 +5,10 @@
   "place": "214 Elm Street",
   "note": "Tue to Sat, 9 to 6. Desk: 555-0148. desk@elmstreetcuts.example",
   "days": {
+    "2026-09-14": {
+      "note": "Closed Mondays.",
+      "slots": []
+    },
     "2026-09-15": {
       "note": "",
       "slots": [

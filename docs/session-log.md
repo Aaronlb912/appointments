@@ -56,6 +56,20 @@ Landed:
 - Month grid with booked counts
 - Previous / next month in month view
 
+## 2026-09-16 — desk pass
+
+Runs: http://127.0.0.1:49141/ (`npm start`)
+
+Landed:
+- Next today line
+- Same time twice misses
+- Name fill after three letters
+- Day note on the open day
+- Time chips 9 to 6
+- Tap the phone
+- Print this week and Copy this day
+- Here and No-show next to Cancel
+
 Next session:
 - Screenshots (page, result, miss)
 - Demo video

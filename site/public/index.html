@@ -16,8 +16,9 @@
     </div>
   </header>
   <main>
-    <p class="lead">Open a day. Write a name and a time. Switch week or month, or jump back to this week. Edit or cancel a slot. Search a name. Print the day. The book stays in this browser after a refresh. Nothing on this page sends mail.</p>
+    <p class="lead">Open a day. Write a name and a time. Switch week or month, or jump back to this week. Edit, mark here, no-show, or cancel. Search a name. Print a day or the week. The book stays in this browser after a refresh. Nothing on this page sends mail.</p>
     <p class="note no-print" id="mode-line"></p>
+    <p id="next-up" class="next-up" hidden></p>
     <p id="tools-err" class="err no-print" hidden></p>
 
     <div class="toolbar no-print">
@@ -26,6 +27,8 @@
       <button type="button" class="secondary" id="btn-download">Download JSON</button>
       <button type="button" class="secondary" id="btn-load">Load JSON</button>
       <button type="button" class="secondary" id="btn-print">Print this day</button>
+      <button type="button" class="secondary" id="btn-print-week">Print this week</button>
+      <button type="button" class="secondary" id="btn-copy-day">Copy this day</button>
       <button type="button" class="secondary" id="btn-dup">Duplicate week</button>
       <input id="file-json" type="file" accept="application/json,.json" hidden>
     </div>
@@ -55,6 +58,10 @@
         <section id="day-panel" class="day-panel" aria-live="polite">
           <h2 id="day-heading">Pick a day</h2>
           <p id="day-note" class="day-note" hidden></p>
+          <p class="day-note-edit no-print">
+            <label for="day-note-field">Day note</label>
+            <input id="day-note-field" type="text" autocomplete="off" placeholder="Closed. Dana off.">
+          </p>
           <p id="day-empty" class="empty" hidden></p>
           <table class="slots" id="slots-table" hidden>
             <thead>
@@ -77,10 +84,12 @@
             <p>
               <label for="slot-time">Time</label>
               <input id="slot-time" type="time">
+              <span id="time-chips" class="time-chips"></span>
             </p>
-            <p>
+            <p class="suggest-wrap">
               <label for="slot-name">Name</label>
-              <input id="slot-name" type="text" autocomplete="name" placeholder="Maya Ortiz">
+              <input id="slot-name" type="text" autocomplete="off" placeholder="Maya Ortiz">
+              <ul id="name-suggest" class="suggest" hidden></ul>
             </p>
             <p>
               <label for="slot-phone">Phone</label>
@@ -154,6 +163,8 @@
         <button type="submit" id="rename-save">Rename</button>
       </div>
     </form>
+
+    <section id="week-print" class="week-print" hidden aria-hidden="true"></section>
 
     <section id="pile" class="day-panel pile no-print" aria-labelledby="pile-heading">
       <h2 id="pile-heading">Canceled pile</h2>

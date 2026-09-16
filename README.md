@@ -1,9 +1,9 @@
 # Appointment book
 
 Open a day. Write a name and a time. Switch week or month. Jump back
-to this week. Edit or cancel a slot. Search a name. Print the day.
-Duplicate a week. Rename a person. The book stays in this browser
-after a refresh.
+to this week. Edit, mark here, no-show, or cancel. Search a name.
+Print a day or the week. Copy a day. Duplicate a week. Rename a
+person. The book stays in this browser after a refresh.
 
 This is a desk book for a shop that already knows who is coming this
 week. It is not a calendar product and it does not send mail.

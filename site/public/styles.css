@@ -99,6 +99,15 @@ main {
   margin: 0 0 0.85rem;
 }
 
+.next-up {
+  margin: 0 0 0.85rem;
+  padding: 0.55rem 0.7rem;
+  background: var(--page);
+  border: 1px solid var(--rule);
+  border-left: 4px solid var(--cloth-edge);
+  max-width: 40rem;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -206,8 +215,8 @@ button:focus-visible {
 
 .row-actions {
   display: flex;
-  gap: 0.75rem;
-  white-space: nowrap;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
 }
 
 .row-actions .quiet + .quiet {
@@ -401,6 +410,8 @@ button:disabled {
   font-size: 0.72rem;
   color: var(--muted);
   margin-top: 0.28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .day-tab.is-today:not(.is-open) {
@@ -425,6 +436,120 @@ button:disabled {
   margin: -0.35rem 0 0.75rem;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.day-note-edit {
+  margin: 0 0 0.75rem;
+}
+
+.time-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  margin: 0.4rem 0 0;
+}
+
+.time-chips button {
+  font-size: 0.72rem;
+  padding: 0.22rem 0.4rem;
+  background: var(--page);
+  color: var(--ink);
+  border-color: #c3b496;
+}
+
+.time-chips button.is-on {
+  background: var(--cloth);
+  color: var(--cream);
+  border-color: var(--cloth);
+}
+
+.time-chips button.is-taken:not(.is-on) {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.suggest-wrap {
+  position: relative;
+}
+
+.suggest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  background: #fff;
+  border: 1px solid #c3b496;
+  max-height: 10rem;
+  overflow: auto;
+}
+
+.suggest li {
+  margin: 0;
+}
+
+.suggest button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: #fff;
+  color: var(--ink);
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 0.4rem 0.5rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.95rem;
+}
+
+.suggest button:hover,
+.suggest button:focus-visible {
+  background: var(--hit);
+}
+
+.slot-mark {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-left: 0.35rem;
+}
+
+.slots tr.is-here td,
+.slots tr.is-noshow td {
+  color: var(--muted);
+}
+
+.slots td a.tel {
+  color: var(--link);
+}
+
+.week-print {
+  display: none;
+}
+
+.week-print h2 {
+  margin: 0 0 0.7rem;
+  font-size: 1.2rem;
+  font-weight: normal;
+}
+
+.week-print h3 {
+  margin: 1rem 0 0.25rem;
+  font-size: 1rem;
+  font-weight: normal;
+}
+
+.week-print p {
+  margin: 0 0 0.2rem;
+}
+
+.week-print .day-block {
+  margin: 0 0 0.85rem;
+  page-break-inside: avoid;
 }
 
 .empty {
@@ -600,7 +725,9 @@ button:disabled {
   .cal-tools,
   .week-bar,
   .week-strip,
-  .month-grid {
+  .month-grid,
+  .next-up,
+  .day-note-edit {
     display: none !important;
   }
 
@@ -620,5 +747,19 @@ button:disabled {
     border: 0;
     padding: 0;
     min-height: 0;
+  }
+
+  body.print-week .day-panel {
+    display: none !important;
+  }
+
+  body.print-week .week-print,
+  body.print-week .week-print[hidden] {
+    display: block !important;
+  }
+
+  .slots td a.tel {
+    color: inherit;
+    text-decoration: none;
   }
 }
