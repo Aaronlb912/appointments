@@ -36,6 +36,16 @@ Landed:
 - Old JSON: flat `slots` array, `for` as note, missing status
 - Empty search, empty pile, blank rename
 
+## 2026-09-16 — styling pass
+
+Runs: http://127.0.0.1:49141/ (`npm start`)
+
+Landed:
+- Week and day sit first, add slot beside the day
+- Find and This book on a second row
+- Desk paper, cloth cover, ledger table
+- Narrow width: stacked slots, full-width add form
+
 Next session:
 - Screenshots (page, result, miss)
 - Demo video

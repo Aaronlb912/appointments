@@ -68,8 +68,8 @@ still loads.
 
 ## This session
 
-Sessions 2-4. Edit, canceled pile, search, print, duplicate week,
-rename, old JSON, miss polish.
+CSS pass. Week and day first. Add slot beside the day. Find and
+This book below. Narrow width checked.
 
 ## Next session
 
