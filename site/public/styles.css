@@ -112,7 +112,8 @@ label {
 }
 
 input[type="text"],
-input[type="time"] {
+input[type="time"],
+select {
   width: 100%;
   font: inherit;
   padding: 0.32rem 0.4rem;
@@ -135,6 +136,34 @@ input[type="time"] {
   flex-wrap: wrap;
   gap: 0.45rem;
   margin-top: 0.4rem;
+}
+
+.row-actions {
+  display: flex;
+  gap: 0.7rem;
+  white-space: nowrap;
+}
+
+ul.plain {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0;
+}
+
+ul.plain li {
+  margin: 0 0 0.35rem;
+}
+
+ul.plain button.quiet {
+  margin-left: 0.45rem;
+}
+
+.slots tr.is-hit td {
+  background: #f3e2c4;
+}
+
+.slots.canceled td {
+  color: var(--muted);
 }
 
 button {
@@ -313,7 +342,16 @@ button:disabled {
   .skip,
   .toolbar,
   #slot-form,
-  #book-form {
+  #book-form,
+  #find-form,
+  #rename-form,
+  #pile,
+  .week-bar,
+  .week-strip {
+    display: none !important;
+  }
+
+  .row-actions {
     display: none !important;
   }
 

@@ -16,16 +16,29 @@
     </div>
   </header>
   <main>
-    <p class="lead">Open a day. Write a name and a time. The book stays in this browser after a refresh. Download JSON if you want a file. Nothing on this page sends mail.</p>
+    <p class="lead">Open a day. Write a name and a time. Edit or cancel a slot. Search a name. Print the day. The book stays in this browser after a refresh. Nothing on this page sends mail.</p>
     <p class="note no-print" id="mode-line"></p>
+    <p id="tools-err" class="err no-print" hidden></p>
 
     <div class="toolbar no-print">
       <button type="button" id="btn-sample">Load sample</button>
       <button type="button" class="secondary" id="btn-blank">Start blank</button>
       <button type="button" class="secondary" id="btn-download">Download JSON</button>
       <button type="button" class="secondary" id="btn-load">Load JSON</button>
+      <button type="button" class="secondary" id="btn-print">Print this day</button>
+      <button type="button" class="secondary" id="btn-dup">Duplicate week</button>
       <input id="file-json" type="file" accept="application/json,.json" hidden>
     </div>
+
+    <form id="find-form" class="pad no-print" action="#">
+      <h2>Find a name</h2>
+      <p>
+        <label for="find-q">Name, phone, or what they are in for</label>
+        <input id="find-q" type="text" autocomplete="off" placeholder="Priya Shah">
+      </p>
+      <p id="find-empty" class="empty" hidden></p>
+      <ul id="find-results" class="plain"></ul>
+    </form>
 
     <form id="book-form" class="pad no-print" action="#">
       <h2>This book</h2>
@@ -50,7 +63,7 @@
       <p id="book-save-msg" class="status" hidden>Saved in this browser.</p>
     </form>
 
-    <div class="week-bar">
+    <div class="week-bar no-print">
       <button type="button" class="secondary" id="week-prev">Previous week</button>
       <h2 id="week-label">Week</h2>
       <button type="button" class="secondary" id="week-next">Next week</button>
@@ -99,8 +112,46 @@
       <div class="actions">
         <button type="submit" id="slot-save">Add slot</button>
         <button type="button" class="secondary" id="slot-clear">Clear</button>
+        <button type="button" class="secondary" id="slot-cancel-edit" hidden>Cancel edit</button>
       </div>
     </form>
+
+    <form id="rename-form" class="pad no-print" action="#">
+      <h2>Rename a person</h2>
+      <p class="note">Changes every slot with that name, including canceled ones.</p>
+      <p id="rename-err" class="err" hidden></p>
+      <p id="rename-empty" class="empty" hidden>No names in the book yet. Add a slot first.</p>
+      <div class="row3" id="rename-fields">
+        <p>
+          <label for="rename-from">Current name</label>
+          <select id="rename-from"></select>
+        </p>
+        <p>
+          <label for="rename-to">New name</label>
+          <input id="rename-to" type="text" autocomplete="off" placeholder="Maya Ortiz">
+        </p>
+      </div>
+      <div class="actions">
+        <button type="submit" id="rename-save">Rename</button>
+      </div>
+    </form>
+
+    <section id="pile" class="day-panel no-print" aria-labelledby="pile-heading">
+      <h2 id="pile-heading">Canceled pile</h2>
+      <p id="pile-empty" class="empty" hidden></p>
+      <table class="slots canceled" id="pile-table" hidden>
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Time</th>
+            <th>Name</th>
+            <th>For</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="pile-rows"></tbody>
+      </table>
+    </section>
   </main>
   <script src="app.js"></script>
 </body>

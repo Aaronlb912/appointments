@@ -10,6 +10,7 @@ const els = {
   title: document.getElementById("book-title"),
   sub: document.getElementById("book-sub"),
   mode: document.getElementById("mode-line"),
+  toolsErr: document.getElementById("tools-err"),
   fieldTitle: document.getElementById("field-title"),
   fieldSubtitle: document.getElementById("field-subtitle"),
   fieldPlace: document.getElementById("field-place"),
@@ -27,13 +28,30 @@ const els = {
   slotName: document.getElementById("slot-name"),
   slotPhone: document.getElementById("slot-phone"),
   slotNote: document.getElementById("slot-note"),
+  slotFormTitle: document.getElementById("slot-form-title"),
+  slotSave: document.getElementById("slot-save"),
+  slotClear: document.getElementById("slot-clear"),
+  slotCancelEdit: document.getElementById("slot-cancel-edit"),
   fileJson: document.getElementById("file-json"),
+  findQ: document.getElementById("find-q"),
+  findEmpty: document.getElementById("find-empty"),
+  findResults: document.getElementById("find-results"),
+  renameErr: document.getElementById("rename-err"),
+  renameEmpty: document.getElementById("rename-empty"),
+  renameFields: document.getElementById("rename-fields"),
+  renameFrom: document.getElementById("rename-from"),
+  renameTo: document.getElementById("rename-to"),
+  pileEmpty: document.getElementById("pile-empty"),
+  pileTable: document.getElementById("pile-table"),
+  pileRows: document.getElementById("pile-rows"),
 };
 
 let book = emptyBook();
 let viewedMonday = mondayOf(new Date());
 let openDay = iso(new Date());
 let persistOk = true;
+let editingId = null;
+let findQuery = "";
 
 function emptyBook() {
   return {
@@ -72,39 +90,59 @@ function fromIso(value) {
   return new Date(y, m - 1, d);
 }
 
-function normalizeBook(raw) {
-  const next = emptyBook();
-  if (!raw || typeof raw !== "object") return next;
-  if (typeof raw.title === "string") next.title = raw.title;
-  if (typeof raw.subtitle === "string") next.subtitle = raw.subtitle;
-  if (typeof raw.place === "string") next.place = raw.place;
-  if (typeof raw.note === "string") next.note = raw.note;
-  const days = raw.days && typeof raw.days === "object" ? raw.days : {};
-  Object.keys(days).forEach(function (key) {
-    if (!fromIso(key)) return;
-    const day = days[key] || {};
-    const slots = Array.isArray(day.slots) ? day.slots : [];
-    next.days[key] = {
-      note: typeof day.note === "string" ? day.note : "",
-      slots: slots.map(normalizeSlot).filter(Boolean),
-    };
-  });
-  return next;
+function newId() {
+  return "s-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 }
 
 function normalizeSlot(slot, index) {
   if (!slot || typeof slot !== "object") return null;
   const name = String(slot.name || "").trim();
-  const time = String(slot.time || "").trim();
+  const time = String(slot.time || slot.when || "").trim();
   if (!name && !time) return null;
   return {
     id: String(slot.id || "s-" + index + "-" + time),
     time: time,
     name: name,
     phone: String(slot.phone || "").trim(),
-    note: String(slot.note || "").trim(),
+    note: String(slot.note || slot.for || "").trim(),
     status: slot.status === "canceled" ? "canceled" : "booked",
   };
+}
+
+function addNormalizedSlot(next, dateIso, slot, index) {
+  if (!fromIso(dateIso)) return;
+  const n = normalizeSlot(slot, index);
+  if (!n) return;
+  if (!next.days[dateIso]) next.days[dateIso] = { note: "", slots: [] };
+  next.days[dateIso].slots.push(n);
+}
+
+function normalizeBook(raw) {
+  const next = emptyBook();
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return next;
+  if (typeof raw.title === "string") next.title = raw.title;
+  if (typeof raw.subtitle === "string") next.subtitle = raw.subtitle;
+  if (typeof raw.place === "string") next.place = raw.place;
+  if (typeof raw.note === "string") next.note = raw.note;
+
+  const days = raw.days && typeof raw.days === "object" && !Array.isArray(raw.days) ? raw.days : null;
+  const hasDays = days && Object.keys(days).length > 0;
+  if (hasDays) {
+    Object.keys(days).forEach(function (key) {
+      if (!fromIso(key)) return;
+      const day = days[key] || {};
+      const slots = Array.isArray(day.slots) ? day.slots : [];
+      next.days[key] = {
+        note: typeof day.note === "string" ? day.note : "",
+        slots: slots.map(normalizeSlot).filter(Boolean),
+      };
+    });
+  } else if (Array.isArray(raw.slots)) {
+    raw.slots.forEach(function (slot, i) {
+      addNormalizedSlot(next, String(slot && slot.date || ""), slot, i);
+    });
+  }
+  return next;
 }
 
 function dayRecord(dateIso) {
@@ -115,8 +153,50 @@ function bookedSlots(dateIso) {
   return dayRecord(dateIso).slots.filter(function (slot) {
     return slot.status !== "canceled";
   }).slice().sort(function (a, b) {
-    return a.time.localeCompare(b.time);
+    return a.time.localeCompare(b.time) || a.name.localeCompare(b.name);
   });
+}
+
+function canceledSlots() {
+  const list = [];
+  Object.keys(book.days).sort().forEach(function (dateIso) {
+    book.days[dateIso].slots.forEach(function (slot) {
+      if (slot.status === "canceled") list.push({ slot: slot, date: dateIso });
+    });
+  });
+  list.sort(function (a, b) {
+    return a.date.localeCompare(b.date) || a.slot.time.localeCompare(b.slot.time);
+  });
+  return list;
+}
+
+function findSlot(id) {
+  const keys = Object.keys(book.days);
+  for (let i = 0; i < keys.length; i += 1) {
+    const dateIso = keys[i];
+    const slots = book.days[dateIso].slots;
+    for (let j = 0; j < slots.length; j += 1) {
+      if (slots[j].id === id) return { slot: slots[j], date: dateIso, day: book.days[dateIso] };
+    }
+  }
+  return null;
+}
+
+function namesInBook() {
+  const seen = {};
+  const names = [];
+  Object.keys(book.days).forEach(function (dateIso) {
+    book.days[dateIso].slots.forEach(function (slot) {
+      const name = slot.name.trim();
+      if (!name || seen[name]) return;
+      seen[name] = true;
+      names.push(name);
+    });
+  });
+  names.sort(function (a, b) {
+    return a.localeCompare(b);
+  });
+  return names;
 }
 
 function formatTime(hhmm) {
@@ -141,7 +221,7 @@ function formatWeekLabel(monday) {
 
 function formatDayLong(date) {
   const names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  return names[date.getDay()] + ", " + MONTHS[date.getMonth()] + " " + date.getDate();
+  return names[date.getDay()] + ", " + MONTHS[date.getMonth()] + " " + date.getDate() + ", " + date.getFullYear();
 }
 
 function persist() {
@@ -156,6 +236,22 @@ function persist() {
 function showErr(message) {
   els.slotErr.hidden = !message;
   els.slotErr.textContent = message || "";
+}
+
+function showToolsErr(message) {
+  els.toolsErr.hidden = !message;
+  els.toolsErr.textContent = message || "";
+}
+
+function showRenameErr(message) {
+  els.renameErr.hidden = !message;
+  els.renameErr.textContent = message || "";
+}
+
+function nameHit(slot) {
+  if (!findQuery) return false;
+  const blob = (slot.name + " " + slot.phone + " " + slot.note).toLowerCase();
+  return blob.indexOf(findQuery) !== -1;
 }
 
 function renderCover() {
@@ -194,6 +290,15 @@ function renderWeek() {
   }
 }
 
+function quietButton(label, attr, id) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "quiet";
+  btn.textContent = label;
+  btn.setAttribute(attr, id);
+  return btn;
+}
+
 function renderDay() {
   const date = fromIso(openDay);
   if (!date) {
@@ -225,6 +330,7 @@ function renderDay() {
   els.slotsTable.hidden = false;
   slots.forEach(function (slot) {
     const tr = document.createElement("tr");
+    if (nameHit(slot)) tr.className = "is-hit";
     const time = document.createElement("td");
     time.className = "time";
     time.textContent = formatTime(slot.time);
@@ -235,21 +341,125 @@ function renderDay() {
     const note = document.createElement("td");
     note.textContent = slot.note;
     const act = document.createElement("td");
-    const rm = document.createElement("button");
-    rm.type = "button";
-    rm.className = "quiet";
-    rm.textContent = "Remove";
-    rm.dataset.remove = slot.id;
-    act.append(rm);
+    act.className = "row-actions no-print";
+    act.append(quietButton("Edit", "data-edit", slot.id), quietButton("Cancel", "data-cancel", slot.id));
     tr.append(time, name, phone, note, act);
     els.slotRows.append(tr);
   });
+}
+
+function renderFind() {
+  els.findResults.replaceChildren();
+  const q = findQuery;
+  if (!q) {
+    els.findEmpty.hidden = true;
+    return;
+  }
+  const hits = [];
+  Object.keys(book.days).sort().forEach(function (dateIso) {
+    book.days[dateIso].slots.forEach(function (slot) {
+      if (nameHit(slot)) hits.push({ slot: slot, date: dateIso });
+    });
+  });
+  if (hits.length === 0) {
+    els.findEmpty.hidden = false;
+    els.findEmpty.textContent = "No names match. Try another word, or clear the box.";
+    return;
+  }
+  els.findEmpty.hidden = true;
+  hits.forEach(function (hit) {
+    const li = document.createElement("li");
+    const day = fromIso(hit.date);
+    const canceled = hit.slot.status === "canceled" ? " (canceled)" : "";
+    li.append(document.createTextNode(
+      hit.slot.name + " - " + formatDayLong(day) + " " + formatTime(hit.slot.time) + canceled
+    ));
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "quiet";
+    open.textContent = "Open day";
+    open.dataset.openDay = hit.date;
+    li.append(open);
+    els.findResults.append(li);
+  });
+}
+
+function renderRename() {
+  const names = namesInBook();
+  const prev = els.renameFrom.value;
+  els.renameFrom.replaceChildren();
+  if (names.length === 0) {
+    els.renameEmpty.hidden = false;
+    els.renameFields.hidden = true;
+    return;
+  }
+  els.renameEmpty.hidden = true;
+  els.renameFields.hidden = false;
+  names.forEach(function (name) {
+    const opt = document.createElement("option");
+    opt.value = name;
+    opt.textContent = name;
+    els.renameFrom.append(opt);
+  });
+  if (prev && names.indexOf(prev) !== -1) els.renameFrom.value = prev;
+}
+
+function renderPile() {
+  const list = canceledSlots();
+  els.pileRows.replaceChildren();
+  if (list.length === 0) {
+    els.pileTable.hidden = true;
+    els.pileEmpty.hidden = false;
+    els.pileEmpty.textContent = "No canceled slots. Cancel a name on a day to send it here. Search still finds it.";
+    return;
+  }
+  els.pileEmpty.hidden = true;
+  els.pileTable.hidden = false;
+  list.forEach(function (hit) {
+    const tr = document.createElement("tr");
+    if (nameHit(hit.slot)) tr.className = "is-hit";
+    const day = document.createElement("td");
+    day.textContent = formatDayLong(fromIso(hit.date));
+    const time = document.createElement("td");
+    time.className = "time";
+    time.textContent = formatTime(hit.slot.time);
+    const name = document.createElement("td");
+    name.textContent = hit.slot.name;
+    const note = document.createElement("td");
+    note.textContent = hit.slot.note;
+    const act = document.createElement("td");
+    act.className = "row-actions";
+    act.append(
+      quietButton("Put back", "data-restore", hit.slot.id),
+      quietButton("Remove", "data-remove", hit.slot.id)
+    );
+    tr.append(day, time, name, note, act);
+    els.pileRows.append(tr);
+  });
+}
+
+function renderFormMode() {
+  if (editingId) {
+    els.slotFormTitle.textContent = "Edit slot";
+    els.slotSave.textContent = "Save slot";
+    els.slotClear.hidden = true;
+    els.slotCancelEdit.hidden = false;
+  } else {
+    els.slotFormTitle.textContent = "Add a slot";
+    els.slotSave.textContent = "Add slot";
+    els.slotClear.hidden = false;
+    els.slotCancelEdit.hidden = true;
+  }
 }
 
 function render() {
   renderCover();
   renderWeek();
   renderDay();
+  renderFind();
+  renderRename();
+  renderPile();
+  renderFormMode();
 }
 
 function saveBookFields() {
@@ -263,11 +473,13 @@ function saveBookFields() {
 }
 
 function clearSlotForm() {
+  editingId = null;
   els.slotTime.value = "";
   els.slotName.value = "";
   els.slotPhone.value = "";
   els.slotNote.value = "";
   showErr("");
+  renderFormMode();
 }
 
 function ensureDay(dateIso) {
@@ -277,7 +489,13 @@ function ensureDay(dateIso) {
   return book.days[dateIso];
 }
 
-function addSlot(event) {
+function pruneDay(dateIso) {
+  const day = book.days[dateIso];
+  if (!day) return;
+  if (day.slots.length === 0 && !day.note) delete book.days[dateIso];
+}
+
+function saveSlot(event) {
   event.preventDefault();
   const time = els.slotTime.value.trim();
   const name = els.slotName.value.trim();
@@ -291,31 +509,78 @@ function addSlot(event) {
     els.slotName.focus();
     return;
   }
-  const day = ensureDay(openDay);
-  day.slots.push({
-    id: "s-" + Date.now().toString(36),
-    time: time,
-    name: name,
-    phone: els.slotPhone.value.trim(),
-    note: els.slotNote.value.trim(),
-    status: "booked",
-  });
+  if (editingId) {
+    const found = findSlot(editingId);
+    if (!found) {
+      showErr("That slot is gone. Add it again.");
+      clearSlotForm();
+      return;
+    }
+    found.slot.time = time;
+    found.slot.name = name;
+    found.slot.phone = els.slotPhone.value.trim();
+    found.slot.note = els.slotNote.value.trim();
+  } else {
+    const day = ensureDay(openDay);
+    day.slots.push({
+      id: newId(),
+      time: time,
+      name: name,
+      phone: els.slotPhone.value.trim(),
+      note: els.slotNote.value.trim(),
+      status: "booked",
+    });
+  }
   persist();
   clearSlotForm();
   render();
   els.slotName.focus();
 }
 
+function startEdit(id) {
+  const found = findSlot(id);
+  if (!found || found.slot.status === "canceled") return;
+  editingId = id;
+  openDay = found.date;
+  viewedMonday = mondayOf(fromIso(found.date));
+  els.slotTime.value = found.slot.time;
+  els.slotName.value = found.slot.name;
+  els.slotPhone.value = found.slot.phone;
+  els.slotNote.value = found.slot.note;
+  showErr("");
+  showToolsErr("");
+  render();
+  els.slotName.focus();
+}
+
+function cancelSlot(id) {
+  const found = findSlot(id);
+  if (!found) return;
+  found.slot.status = "canceled";
+  persist();
+  if (editingId === id) clearSlotForm();
+  render();
+}
+
+function restoreSlot(id) {
+  const found = findSlot(id);
+  if (!found) return;
+  found.slot.status = "booked";
+  persist();
+  openDay = found.date;
+  viewedMonday = mondayOf(fromIso(found.date));
+  render();
+}
+
 function removeSlot(id) {
-  const day = book.days[openDay];
-  if (!day) return;
-  day.slots = day.slots.filter(function (slot) {
+  const found = findSlot(id);
+  if (!found) return;
+  found.day.slots = found.day.slots.filter(function (slot) {
     return slot.id !== id;
   });
-  if (day.slots.length === 0 && !day.note) {
-    delete book.days[openDay];
-  }
+  pruneDay(found.date);
   persist();
+  if (editingId === id) clearSlotForm();
   render();
 }
 
@@ -332,6 +597,9 @@ function applyBook(next, modeText) {
   book = normalizeBook(next);
   persist();
   els.mode.textContent = modeText || "";
+  showToolsErr("");
+  showRenameErr("");
+  clearSlotForm();
   render();
 }
 
@@ -353,6 +621,8 @@ function startBlank() {
   applyBook(emptyBook(), "Blank book. Pick a day and add a slot.");
   viewedMonday = mondayOf(new Date());
   openDay = iso(new Date());
+  findQuery = "";
+  els.findQ.value = "";
   render();
 }
 
@@ -361,24 +631,107 @@ function loadJsonFile(file) {
   reader.onload = function () {
     try {
       const raw = JSON.parse(String(reader.result || ""));
-      if (!raw || typeof raw !== "object") throw new Error("bad");
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("bad");
       applyBook(raw, "Loaded from " + file.name + ".");
     } catch (err) {
-      showErr("That file is not an appointment book. Try another JSON file.");
+      showToolsErr("That file is not an appointment book. Try another JSON file.");
     }
   };
   reader.readAsText(file);
 }
 
+function duplicateWeek() {
+  showToolsErr("");
+  let sourceCount = 0;
+  for (let i = 0; i < 7; i += 1) {
+    sourceCount += bookedSlots(iso(addDays(viewedMonday, i))).length;
+  }
+  if (sourceCount === 0) {
+    showToolsErr("This week has no booked slots to copy.");
+    return;
+  }
+  const destMonday = addDays(viewedMonday, 7);
+  let destCount = 0;
+  for (let i = 0; i < 7; i += 1) {
+    destCount += bookedSlots(iso(addDays(destMonday, i))).length;
+  }
+  if (destCount > 0) {
+    showToolsErr("Next week already has names. Clear those days, or go there and start from a blank week.");
+    return;
+  }
+  for (let i = 0; i < 7; i += 1) {
+    const srcIso = iso(addDays(viewedMonday, i));
+    const destIso = iso(addDays(destMonday, i));
+    const src = dayRecord(srcIso);
+    const copies = bookedSlots(srcIso).map(function (slot) {
+      return {
+        id: newId(),
+        time: slot.time,
+        name: slot.name,
+        phone: slot.phone,
+        note: slot.note,
+        status: "booked",
+      };
+    });
+    if (copies.length === 0 && !src.note) continue;
+    const dest = ensureDay(destIso);
+    dest.note = src.note;
+    dest.slots = dest.slots.concat(copies);
+  }
+  persist();
+  viewedMonday = destMonday;
+  openDay = iso(destMonday);
+  els.mode.textContent = "Copied this week onto the next week.";
+  render();
+}
+
+function renamePerson(event) {
+  event.preventDefault();
+  showRenameErr("");
+  const from = els.renameFrom.value;
+  const to = els.renameTo.value.trim();
+  if (!from) {
+    showRenameErr("Pick a name to change.");
+    return;
+  }
+  if (!to) {
+    showRenameErr("Put the new name in.");
+    els.renameTo.focus();
+    return;
+  }
+  if (to === from) {
+    showRenameErr("That is the same name. Type a different one.");
+    els.renameTo.focus();
+    return;
+  }
+  let count = 0;
+  Object.keys(book.days).forEach(function (dateIso) {
+    book.days[dateIso].slots.forEach(function (slot) {
+      if (slot.name === from) {
+        slot.name = to;
+        count += 1;
+      }
+    });
+  });
+  persist();
+  els.renameTo.value = "";
+  els.mode.textContent = "Renamed " + from + " to " + to + " on " + count + (count === 1 ? " slot." : " slots.");
+  render();
+}
+
 document.getElementById("week-prev").addEventListener("click", function () {
   viewedMonday = addDays(viewedMonday, -7);
   openDay = iso(viewedMonday);
+  if (editingId) clearSlotForm();
+  showToolsErr("");
   render();
 });
 
 document.getElementById("week-next").addEventListener("click", function () {
   viewedMonday = addDays(viewedMonday, 7);
   openDay = iso(viewedMonday);
+  if (editingId) clearSlotForm();
+  showToolsErr("");
   render();
 });
 
@@ -386,22 +739,69 @@ els.weekStrip.addEventListener("click", function (event) {
   const btn = event.target.closest("[data-day]");
   if (!btn) return;
   openDay = btn.dataset.day;
+  if (editingId) clearSlotForm();
+  showToolsErr("");
   render();
 });
 
 els.slotRows.addEventListener("click", function (event) {
-  const btn = event.target.closest("[data-remove]");
-  if (!btn) return;
-  removeSlot(btn.dataset.remove);
+  const edit = event.target.closest("[data-edit]");
+  if (edit) {
+    startEdit(edit.getAttribute("data-edit"));
+    return;
+  }
+  const cancel = event.target.closest("[data-cancel]");
+  if (cancel) cancelSlot(cancel.getAttribute("data-cancel"));
 });
 
-document.getElementById("slot-form").addEventListener("submit", addSlot);
-document.getElementById("slot-clear").addEventListener("click", clearSlotForm);
+els.pileRows.addEventListener("click", function (event) {
+  const restore = event.target.closest("[data-restore]");
+  if (restore) {
+    restoreSlot(restore.getAttribute("data-restore"));
+    return;
+  }
+  const remove = event.target.closest("[data-remove]");
+  if (remove) removeSlot(remove.getAttribute("data-remove"));
+});
+
+els.findResults.addEventListener("click", function (event) {
+  const btn = event.target.closest("[data-open-day]");
+  if (!btn) return;
+  openDay = btn.getAttribute("data-open-day");
+  viewedMonday = mondayOf(fromIso(openDay));
+  render();
+});
+
+els.findQ.addEventListener("input", function () {
+  findQuery = els.findQ.value.trim().toLowerCase();
+  renderFind();
+  renderDay();
+  renderPile();
+});
+
+document.getElementById("find-form").addEventListener("submit", function (event) {
+  event.preventDefault();
+  findQuery = els.findQ.value.trim().toLowerCase();
+  renderFind();
+  renderDay();
+  renderPile();
+});
+
+document.getElementById("slot-form").addEventListener("submit", saveSlot);
+document.getElementById("slot-clear").addEventListener("click", function () {
+  clearSlotForm();
+  els.slotTime.focus();
+});
+document.getElementById("slot-cancel-edit").addEventListener("click", function () {
+  clearSlotForm();
+  els.slotTime.focus();
+});
 
 document.getElementById("book-form").addEventListener("input", saveBookFields);
+document.getElementById("rename-form").addEventListener("submit", renamePerson);
 document.getElementById("btn-sample").addEventListener("click", function () {
   loadSample().catch(function () {
-    showErr("Could not load the sample file.");
+    showToolsErr("Could not load the sample file.");
   });
 });
 document.getElementById("btn-blank").addEventListener("click", startBlank);
@@ -414,6 +814,10 @@ els.fileJson.addEventListener("change", function () {
   els.fileJson.value = "";
   if (file) loadJsonFile(file);
 });
+document.getElementById("btn-print").addEventListener("click", function () {
+  window.print();
+});
+document.getElementById("btn-dup").addEventListener("click", duplicateWeek);
 
 document.addEventListener("keydown", function (event) {
   if (event.key !== "Escape") return;

@@ -60,6 +60,14 @@
           "phone": "555-0188",
           "note": "Blowout",
           "status": "booked"
+        },
+        {
+          "id": "s-noah-wed",
+          "time": "16:00",
+          "name": "Noah Price",
+          "phone": "555-0108",
+          "note": "Cut",
+          "status": "canceled"
         }
       ]
     },
@@ -72,6 +80,14 @@
           "name": "Rae Patel",
           "phone": "555-0126",
           "note": "Cut",
+          "status": "booked"
+        },
+        {
+          "id": "s-maya-thu",
+          "time": "14:00",
+          "name": "Maya Ortiz",
+          "phone": "555-0102",
+          "note": "Toner check",
           "status": "booked"
         }
       ]

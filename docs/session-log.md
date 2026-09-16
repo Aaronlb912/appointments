@@ -20,3 +20,25 @@ Next session:
 - Canceled pile
 - Quiet Edit
 - Escape still clears the add form
+
+## 2026-09-16 — sessions 2-4
+
+Runs: http://127.0.0.1:49141/ (`npm start`)
+
+Landed:
+- Quiet Edit and Cancel on a booked slot
+- Escape cancels the editor
+- Canceled pile with Put back and Remove
+- Find a name (also finds canceled)
+- Print this day
+- Duplicate week (miss if next week already has names)
+- Rename a person across slots
+- Old JSON: flat `slots` array, `for` as note, missing status
+- Empty search, empty pile, blank rename
+
+Next session:
+- Screenshots (page, result, miss)
+- Demo video
+- README Demo with github.com player
+- LinkedIn draft
+- Mark SHIPPED

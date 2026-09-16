@@ -1,7 +1,8 @@
 # Appointment book
 
-Open a day. Write a name and a time. The book stays in this browser
-after a refresh. Download JSON if you want a file copy.
+Open a day. Write a name and a time. Edit or cancel a slot. Search a
+name. Print the day. Duplicate a week. Rename a person. The book stays
+in this browser after a refresh.
 
 This is a desk book for a shop that already knows who is coming this
 week. It is not a calendar product and it does not send mail.
@@ -21,9 +22,9 @@ npm start
 
 Then open http://127.0.0.1:49141/
 
-The hosted sample (after GitHub Pages is on) will live next to this
-README. Until then, click **Load sample** on the page for Elm Street
-Cuts (fake names). **Start blank** if you want your own week.
+Click **Load sample** for Elm Street Cuts (fake names). **Start blank**
+if you want your own week. The sample is also at
+http://127.0.0.1:49141/demo/
 
 ## What is in the folder
 
@@ -41,4 +42,5 @@ No account.
 ## Make it yours
 
 On the page, **This book** changes the title, shop name, place, and
-note. CSS is `site/public/styles.css` if you want a different cover.
+note. **Rename a person** changes that name on every slot. CSS is
+`site/public/styles.css` if you want a different cover.
