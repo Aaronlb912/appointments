@@ -383,20 +383,18 @@ function renderAccount() {
   const on = cloudSignedIn();
   els.btnSignin.hidden = on;
   els.btnSignout.hidden = !on;
+  els.accountLine.hidden = false;
   if (!cloudReady()) {
-    els.accountLine.hidden = false;
     els.accountLine.textContent = "Sign-in needs the network.";
     return;
   }
   if (on) {
-    els.accountLine.hidden = false;
     els.accountLine.textContent = cloudName
-      ? cloudName
-      : "Signed in";
+      ? "Signed in as " + cloudName + "."
+      : "Signed in. This book saves to your account.";
     return;
   }
-  els.accountLine.hidden = true;
-  els.accountLine.textContent = "";
+  els.accountLine.textContent = "Save this book on other devices.";
 }
 
 async function waitForPuter() {
