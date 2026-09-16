@@ -20,7 +20,7 @@ Pages:
   JSON.
 - `/demo/` opens the Elm Street Cuts sample (`?sample=1`).
 
-Auth: none.
+Auth: optional Puter sign-in. Local save if they skip it.
 
 Sample: Elm Street Cuts in `site/public/sample.json`. Fake names.
 Blank book in `site/public/book.json`.
@@ -47,7 +47,8 @@ Blank book in `site/public/book.json`.
 3. Make it theirs? Yes. Title, shop name, place, note. CSS in
    `site/public/styles.css`.
 4. Take it? Yes. Copy `site/public/`. Download JSON for the data.
-5. No account? Yes. Static files. No signup.
+5. No account? Optional. The folder still runs with no signup. Sign
+   in with Puter to keep the book in that person's account.
 6. Coworker test? Yes. Zip `site/public/`. They open `index.html` on
    any static server.
 7. Keep a copy? Yes. Download JSON. Print this day. Print this week.
@@ -73,8 +74,7 @@ actions. Old JSON still loads.
 
 ## This session
 
-Desk pass: who is next, same-time miss, name fill, day note, time
-chips, tap-to-call, print week, copy day, here / no-show.
+Puter sign-in. Each person gets their own book in their account.
 
 ## Next session
 

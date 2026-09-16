@@ -70,6 +70,16 @@ Landed:
 - Print this week and Copy this day
 - Here and No-show next to Cancel
 
+## 2026-09-16 — Puter sign-in
+
+Runs: http://127.0.0.1:49141/ (`npm start`)
+
+Landed:
+- Sign in with Puter
+- Book saves to that person's account
+- Sign out leaves the copy in this browser
+- Demo URL does not overwrite an account book
+
 Next session:
 - Screenshots (page, result, miss)
 - Demo video

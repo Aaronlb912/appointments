@@ -1,5 +1,6 @@
 const STORE_KEY = "appointments-book";
 const VIEW_KEY = "appointments-cal-view";
+const CLOUD_KEY = "appointments-book";
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -35,6 +36,7 @@ const els = {
   slotRows: document.getElementById("slot-rows"),
   slotErr: document.getElementById("slot-err"),
   slotTime: document.getElementById("slot-time"),
+  timePick: document.getElementById("time-pick"),
   timeChips: document.getElementById("time-chips"),
   slotName: document.getElementById("slot-name"),
   nameSuggest: document.getElementById("name-suggest"),
@@ -57,6 +59,10 @@ const els = {
   pileEmpty: document.getElementById("pile-empty"),
   pileTable: document.getElementById("pile-table"),
   pileRows: document.getElementById("pile-rows"),
+  accountLine: document.getElementById("account-line"),
+  accountErr: document.getElementById("account-err"),
+  btnSignin: document.getElementById("btn-signin"),
+  btnSignout: document.getElementById("btn-signout"),
 };
 
 let book = emptyBook();
@@ -67,6 +73,9 @@ let persistOk = true;
 let editingId = null;
 let findQuery = "";
 let calView = readView();
+let demoMode = false;
+let cloudName = "";
+let cloudTimer = null;
 
 const TIME_CHIPS = (function () {
   const list = [];
@@ -274,7 +283,10 @@ function namesInBook() {
 }
 
 function normTime(value) {
-  const parts = String(value || "").trim().split(":");
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const parts = raw.split(":");
+  if (!parts[0]) return "";
   const h = Number(parts[0]);
   const m = Number(parts[1] || 0);
   if (Number.isNaN(h) || h < 0 || h > 23 || Number.isNaN(m) || m < 0 || m > 59) return "";
@@ -333,12 +345,183 @@ function formatDayLong(date) {
 }
 
 function persist() {
-  if (!persistOk) return;
   try {
     localStorage.setItem(STORE_KEY, JSON.stringify(book));
+    persistOk = true;
   } catch (err) {
     persistOk = false;
   }
+  scheduleCloud();
+}
+
+function cloudReady() {
+  return Boolean(window.puter && puter.auth && puter.kv);
+}
+
+function cloudSignedIn() {
+  return cloudReady() && puter.auth.isSignedIn();
+}
+
+function showAccountErr(message) {
+  els.accountErr.hidden = !message;
+  els.accountErr.textContent = message || "";
+}
+
+async function cloudUserName() {
+  try {
+    const user = await puter.auth.getUser();
+    if (!user || typeof user !== "object") return "";
+    if (typeof user.username === "string" && user.username.trim()) return user.username.trim();
+    if (typeof user.email === "string" && user.email.trim()) return user.email.trim();
+    return "";
+  } catch (err) {
+    return "";
+  }
+}
+
+function renderAccount() {
+  const on = cloudSignedIn();
+  els.btnSignin.hidden = on;
+  els.btnSignout.hidden = !on;
+  if (!cloudReady()) {
+    els.accountLine.textContent = "Sign-in needs the network. The book still saves in this browser.";
+    return;
+  }
+  if (on) {
+    els.accountLine.textContent = cloudName
+      ? "Signed in as " + cloudName + ". This book saves to your account."
+      : "Signed in. This book saves to your account.";
+    return;
+  }
+  els.accountLine.textContent = "Until you sign in, this book stays in this browser only.";
+}
+
+async function waitForPuter() {
+  if (cloudReady()) return true;
+  for (let i = 0; i < 40; i += 1) {
+    await new Promise(function (resolve) {
+      setTimeout(resolve, 100);
+    });
+    if (cloudReady()) return true;
+  }
+  return false;
+}
+
+async function pullCloud() {
+  try {
+    const raw = await puter.kv.get(CLOUD_KEY);
+    if (raw == null || raw === "") return { ok: true, book: null };
+    if (typeof raw === "string") {
+      const parsed = JSON.parse(raw);
+      return { ok: true, book: normalizeBook(parsed) };
+    }
+    if (typeof raw === "object") return { ok: true, book: normalizeBook(raw) };
+    return { ok: true, book: null };
+  } catch (err) {
+    const msg = String((err && (err.message || err.code)) || err || "");
+    if (/not found|does not exist|no such/i.test(msg)) return { ok: true, book: null };
+    return { ok: false, error: "Could not load the book from your account." };
+  }
+}
+
+async function pushCloud() {
+  if (demoMode || !cloudSignedIn()) return;
+  try {
+    await puter.kv.set(CLOUD_KEY, book, { disableSharing: true });
+  } catch (err) {
+    showAccountErr("Could not save the book to your account. It is still in this browser.");
+  }
+}
+
+function scheduleCloud() {
+  if (demoMode || !cloudSignedIn()) return;
+  clearTimeout(cloudTimer);
+  cloudTimer = setTimeout(function () {
+    pushCloud();
+  }, 350);
+}
+
+async function refreshAccount() {
+  cloudName = "";
+  if (!cloudSignedIn()) {
+    renderAccount();
+    return;
+  }
+  cloudName = await cloudUserName();
+  renderAccount();
+}
+
+async function loadCloudBook() {
+  const pulled = await pullCloud();
+  if (!pulled.ok) {
+    showAccountErr(pulled.error);
+    return false;
+  }
+  if (pulled.book) {
+    demoMode = false;
+    applyBook(pulled.book, "Loaded the book from your account.");
+    return true;
+  }
+  await pushCloud();
+  return false;
+}
+
+async function signInCloud() {
+  showAccountErr("");
+  if (!cloudReady()) {
+    showAccountErr("Sign-in is not available on this page.");
+    return;
+  }
+  try {
+    await puter.auth.signIn();
+  } catch (err) {
+    const code = err && (err.error || err.code);
+    const msg = String((err && (err.message || err.msg)) || err || "");
+    if (code === "not_available_in_app") {
+      /* already signed in as the Puter app user */
+    } else if (/popup/i.test(msg) || code === "popup_blocked") {
+      showAccountErr("The sign-in window was blocked. Allow popups and try again.");
+      return;
+    } else if (/closed|cancel/i.test(msg) || code === "auth_window_closed") {
+      showAccountErr("Sign-in was cancelled.");
+      return;
+    } else {
+      showAccountErr("Could not sign in.");
+      return;
+    }
+  }
+  demoMode = false;
+  await refreshAccount();
+  if (!cloudSignedIn()) {
+    showAccountErr("Could not sign in.");
+    return;
+  }
+  const usedCloud = await loadCloudBook();
+  if (!usedCloud) {
+    els.mode.textContent = "Signed in. This book now saves to your account.";
+  }
+  renderAccount();
+}
+
+function signOutCloud() {
+  showAccountErr("");
+  clearTimeout(cloudTimer);
+  if (cloudReady()) puter.auth.signOut();
+  cloudName = "";
+  els.mode.textContent = "This browser is only saving on this computer now.";
+  renderAccount();
+}
+
+async function bootAccount() {
+  const ready = await waitForPuter();
+  if (!ready) {
+    renderAccount();
+    return;
+  }
+  await refreshAccount();
+  if (demoMode || !cloudSignedIn()) return;
+  await loadCloudBook();
+  renderAccount();
 }
 
 function showErr(message) {
@@ -380,6 +563,7 @@ function fillDayTab(btn, date, dateIso, todayIso) {
   const count = occupySlots(dateIso).length;
   if (dateIso === openDay) btn.classList.add("is-open");
   if (dateIso === todayIso) btn.classList.add("is-today");
+  if (count > 0) btn.classList.add("is-busy");
   btn.dataset.day = dateIso;
   if (rec.note) btn.title = rec.note;
   const strong = document.createElement("strong");
@@ -467,6 +651,10 @@ function renderNextUp() {
     + left + (left === 1 ? " left." : " left.");
 }
 
+function closeTimePick() {
+  if (els.timePick) els.timePick.open = false;
+}
+
 function renderTimeChips() {
   const taken = {};
   occupySlots(openDay).forEach(function (slot) {
@@ -474,17 +662,26 @@ function renderTimeChips() {
     taken[normTime(slot.time)] = true;
   });
   const current = normTime(els.slotTime.value);
+  const summary = els.timePick && els.timePick.querySelector("summary");
+  if (summary) {
+    summary.textContent = current ? formatTime(current) + " · change" : "Pick a time";
+  }
   els.timeChips.replaceChildren();
   TIME_CHIPS.forEach(function (hhmm) {
+    if (taken[hhmm] && hhmm !== current) return;
     const btn = document.createElement("button");
     btn.type = "button";
     btn.textContent = formatTime(hhmm);
     btn.dataset.chip = hhmm;
     if (hhmm === current) btn.classList.add("is-on");
-    if (taken[hhmm]) btn.classList.add("is-taken");
-    btn.disabled = !!taken[hhmm] && hhmm !== current;
     els.timeChips.append(btn);
   });
+  if (!els.timeChips.childElementCount) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "No open times from 9 to 6.";
+    els.timeChips.append(empty);
+  }
 }
 
 function hideNameSuggest() {
@@ -802,6 +999,7 @@ function clearSlotForm() {
   els.slotPhone.value = "";
   els.slotNote.value = "";
   hideNameSuggest();
+  closeTimePick();
   showErr("");
   renderFormMode();
 }
@@ -967,6 +1165,7 @@ async function loadSample() {
 }
 
 function startBlank() {
+  demoMode = false;
   applyBook(emptyBook(), "Blank book. Pick a day and add a slot.");
   showDay(iso(new Date()));
   findQuery = "";
@@ -981,6 +1180,7 @@ function loadJsonFile(file) {
     try {
       const raw = JSON.parse(String(reader.result || ""));
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("bad");
+      demoMode = false;
       applyBook(raw, "Loaded from " + file.name + ".");
     } catch (err) {
       showToolsErr("That file is not an appointment book. Try another JSON file.");
@@ -1291,6 +1491,8 @@ els.timeChips.addEventListener("click", function (event) {
   els.slotTime.value = btn.getAttribute("data-chip");
   showErr("");
   renderTimeChips();
+  closeTimePick();
+  els.slotName.focus();
 });
 els.slotName.addEventListener("input", function () {
   renderNameSuggest();
@@ -1313,6 +1515,7 @@ els.dayNoteField.addEventListener("input", saveDayNote);
 document.getElementById("book-form").addEventListener("input", saveBookFields);
 document.getElementById("rename-form").addEventListener("submit", renamePerson);
 document.getElementById("btn-sample").addEventListener("click", function () {
+  demoMode = false;
   loadSample().catch(function () {
     showToolsErr("Could not load the sample file.");
   });
@@ -1334,6 +1537,12 @@ document.getElementById("btn-print").addEventListener("click", function () {
 document.getElementById("btn-print-week").addEventListener("click", printWeek);
 document.getElementById("btn-copy-day").addEventListener("click", copyOpenDay);
 document.getElementById("btn-dup").addEventListener("click", duplicateWeek);
+els.btnSignin.addEventListener("click", function () {
+  signInCloud().catch(function () {
+    showAccountErr("Could not sign in.");
+  });
+});
+els.btnSignout.addEventListener("click", signOutCloud);
 
 window.addEventListener("afterprint", function () {
   document.body.classList.remove("print-week");
@@ -1354,28 +1563,30 @@ async function boot() {
   const wantSample = params.get("sample") === "1";
   try {
     if (wantSample) {
+      demoMode = true;
       await loadSample();
-      return;
+    } else {
+      const saved = localStorage.getItem(STORE_KEY);
+      if (saved) {
+        book = normalizeBook(JSON.parse(saved));
+        els.mode.textContent = "Saved in this browser. Load sample or start blank if you want a clean page.";
+        render();
+      } else {
+        const raw = await fetchJson("book.json");
+        book = normalizeBook(raw);
+        const hasDays = Object.keys(book.days).length > 0;
+        els.mode.textContent = hasDays
+          ? "Loaded book.json."
+          : "Blank book from book.json. Load sample to see Elm Street Cuts.";
+        render();
+      }
     }
-    const saved = localStorage.getItem(STORE_KEY);
-    if (saved) {
-      book = normalizeBook(JSON.parse(saved));
-      els.mode.textContent = "Saved in this browser. Load sample or start blank if you want a clean page.";
-      render();
-      return;
-    }
-    const raw = await fetchJson("book.json");
-    book = normalizeBook(raw);
-    const hasDays = Object.keys(book.days).length > 0;
-    els.mode.textContent = hasDays
-      ? "Loaded book.json."
-      : "Blank book from book.json. Load sample to see Elm Street Cuts.";
-    render();
   } catch (err) {
     book = emptyBook();
     els.mode.textContent = "Blank book. Load sample if you want to see a filled week.";
     render();
   }
+  await bootAccount();
 }
 
 boot();

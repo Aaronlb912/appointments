@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Appointment book</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://js.puter.com/v2/"></script>
 </head>
 <body>
   <a class="skip" href="#slot-name">Skip to add a slot</a>
@@ -32,6 +33,17 @@
       <button type="button" class="secondary" id="btn-dup">Duplicate week</button>
       <input id="file-json" type="file" accept="application/json,.json" hidden>
     </div>
+
+    <section id="account" class="pad account no-print">
+      <h2>Your book on other devices</h2>
+      <p class="note">Sign in. A window opens. Make a free Puter account, or use one you already have. This page remembers you. On your phone, open this same page and sign in with that same account. No keys to copy.</p>
+      <p id="account-line" class="status">Until you sign in, this book stays in this browser only.</p>
+      <p id="account-err" class="err" hidden></p>
+      <div class="actions">
+        <button type="button" id="btn-signin">Sign in</button>
+        <button type="button" class="secondary" id="btn-signout" hidden>Sign out</button>
+      </div>
+    </section>
 
     <div class="spread">
       <div class="cal-tools no-print">
@@ -84,7 +96,10 @@
             <p>
               <label for="slot-time">Time</label>
               <input id="slot-time" type="time">
-              <span id="time-chips" class="time-chips"></span>
+              <details id="time-pick" class="time-pick">
+                <summary>Pick a time</summary>
+                <div id="time-chips" class="time-chips"></div>
+              </details>
             </p>
             <p class="suggest-wrap">
               <label for="slot-name">Name</label>
