@@ -11,6 +11,7 @@ Kind: week of days, open a day, write slots. Not a search. Not a
 kanban. Not a bill split.
 
 Local URL: http://127.0.0.1:49141/
+Public: https://aaronlb912.github.io/appointments/
 Repo: https://github.com/Aaronlb912/appointments
 
 Pages:
